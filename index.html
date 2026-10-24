@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>授業ダイアリー</title>
+<meta name="description" content="授業の予定と記録を管理するアプリ。データはこのリポジトリのJSONに保存されます。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>授業ダイアリー</h1>
+      <div class="sub" id="sub">読み込み中…</div>
+    </div>
+    <div class="tools">
+      <label class="asof" for="term" id="termwrap" hidden>学期<select id="term"></select></label>
+      <label class="asof" for="asof">基準日<input type="date" id="asof"></label>
+      <button class="btn" data-act="settings" id="btn-settings">設定</button>
+    </div>
+  </header>
+  <div class="status" id="status" role="status"></div>
+  <div id="banner"></div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-today" data-tab="today">今日</button>
+    <button class="tab" role="tab" id="tab-plan" data-tab="plan">計画表</button>
+    <button class="tab" role="tab" id="tab-unit" data-tab="unit">単元別</button>
+    <button class="tab" role="tab" id="tab-sum" data-tab="sum">サマリー</button>
+  </div>
+  <main id="app"></main>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <h2 id="dlg-title">設定</h2>
+  <p class="small" style="margin:0 0 4px">GitHubの情報を入れると、記録がこのリポジトリのJSONに自動で保存されます（変更のたびにコミットされます）。入れなくても、この端末の中だけで使えます。</p>
+  <label for="s_owner">GitHubのユーザー名</label><input type="text" id="s_owner" autocomplete="off" autocapitalize="off">
+  <label for="s_repo">リポジトリ名</label><input type="text" id="s_repo" autocomplete="off" autocapitalize="off">
+  <label for="s_branch">ブランチ</label><input type="text" id="s_branch" autocomplete="off" autocapitalize="off">
+  <label for="s_token">アクセストークン（このリポジトリだけに、Contents の読み書きを許可したもの）</label><input type="password" id="s_token" autocomplete="off">
+  <p class="small" id="s_msg" role="status"></p>
+  <div class="dlg-btns" style="justify-content:flex-start">
+    <button class="btn" data-act="test">接続を確かめる</button>
+    <button class="btn" data-act="export">JSONを書き出す</button>
+    <label class="btn" for="importfile" style="margin:0;color:var(--ink);font-size:inherit">JSONを読み込む</label>
+    <input type="file" id="importfile" accept="application/json,.json" hidden>
+  </div>
+  <div class="dlg-btns">
+    <button class="btn" data-act="close-dlg">閉じる</button>
+    <button class="btn on" data-act="save-settings">保存して反映</button>
+  </div>
+</dialog>
+
+<script src="js/logic.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/views.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
