@@ -5,40 +5,49 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>授業ダイアリー</title>
 <meta name="description" content="授業の予定と記録を管理するアプリ。データはこのリポジトリのJSONに保存されます。">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="wrap">
-  <header class="top">
-    <div>
-      <h1>授業ダイアリー</h1>
-      <div class="sub" id="sub">読み込み中…</div>
+  <header class="hero">
+    <div class="brand">
+      <img src="favicon.svg" alt="" width="44" height="44">
+      <div>
+        <h1>授業ダイアリー</h1>
+        <div class="sub" id="sub">読み込み中…</div>
+      </div>
     </div>
     <div class="tools">
       <label class="asof" for="term" id="termwrap" hidden>学期<select id="term"></select></label>
       <label class="asof" for="asof">基準日<input type="date" id="asof"></label>
-      <button class="btn" data-act="settings" id="btn-settings">設定</button>
+      <button class="btn ghost" data-act="settings" id="btn-settings">設定</button>
     </div>
   </header>
   <div class="status" id="status" role="status"></div>
   <div id="banner"></div>
-  <div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-today" data-tab="today">今日</button>
-    <button class="tab" role="tab" id="tab-plan" data-tab="plan">計画表</button>
-    <button class="tab" role="tab" id="tab-unit" data-tab="unit">単元別</button>
-    <button class="tab" role="tab" id="tab-sum" data-tab="sum">サマリー</button>
+  <div class="tabbar">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-today" data-tab="today"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none"/></svg><span>今日</span></button>
+      <button class="tab" role="tab" id="tab-plan" data-tab="plan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg><span>計画表</span></button>
+      <button class="tab" role="tab" id="tab-unit" data-tab="unit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span>単元別</span></button>
+      <button class="tab" role="tab" id="tab-sum" data-tab="sum"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6"/></svg><span>サマリー</span></button>
+    </div>
   </div>
   <main id="app"></main>
 </div>
 
 <dialog id="dlg" aria-labelledby="dlg-title">
   <h2 id="dlg-title">設定</h2>
-  <p class="small" style="margin:0 0 4px">GitHubの情報を入れると、記録がこのリポジトリのJSONに自動で保存されます（変更のたびにコミットされます）。入れなくても、この端末の中だけで使えます。</p>
+  <p class="small" style="margin:0 0 4px">GitHubの情報を入れると、記録がこのリポジトリのJSONに自動で保存されます（直すたびにコミットされます）。入れなくても、この端末の中だけで使えます。</p>
   <label for="s_owner">GitHubのユーザー名</label><input type="text" id="s_owner" autocomplete="off" autocapitalize="off">
   <label for="s_repo">リポジトリ名</label><input type="text" id="s_repo" autocomplete="off" autocapitalize="off">
   <label for="s_branch">ブランチ</label><input type="text" id="s_branch" autocomplete="off" autocapitalize="off">
-  <label for="s_token">アクセストークン（このリポジトリだけに、Contents の読み書きを許可したもの）</label><input type="password" id="s_token" autocomplete="off">
+  <label for="s_token">アクセストークン（このリポジトリだけに Contents の読み書きを許可したもの）</label><input type="password" id="s_token" autocomplete="off">
+  <p class="small"><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">トークンを作るページを開く（GitHub）</a></p>
   <p class="small" id="s_msg" role="status"></p>
   <div class="dlg-btns" style="justify-content:flex-start">
     <button class="btn" data-act="test">接続を確かめる</button>
@@ -46,9 +55,10 @@
     <label class="btn" for="importfile" style="margin:0;color:var(--ink);font-size:inherit">JSONを読み込む</label>
     <input type="file" id="importfile" accept="application/json,.json" hidden>
   </div>
-  <div class="dlg-btns">
-    <button class="btn" data-act="close-dlg">閉じる</button>
-    <button class="btn on" data-act="save-settings">保存して反映</button>
+  <div class="dlg-btns" style="justify-content:space-between">
+    <button class="btn danger" data-act="forget" title="共用のパソコンで使ったあとに押します">この端末の設定を消す</button>
+    <span class="btns"><button class="btn" data-act="close-dlg">閉じる</button>
+    <button class="btn on" data-act="save-settings">保存して反映</button></span>
   </div>
 </dialog>
 

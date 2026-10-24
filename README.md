@@ -11,7 +11,7 @@
 
 1. GitHubで新しいリポジトリを作る（例：`jugyo-diary`）。
 2. このフォルダの中身をすべてアップロードする（`index.html`、`css/`、`js/`、`data/`、`tools/`、`.github/`、`.nojekyll`）。
-3. リポジトリの **Settings → Pages → Build and deployment → Source** を **GitHub Actions** にする。しばらくして `https://<ユーザー名>.github.io/<リポジトリ名>/` が開けば公開完了。
+3. リポジトリの **Settings → Pages → Build and deployment → Source** を **Deploy from a branch** にし、Branch を **main**、フォルダを **/ (root)** にして Save する（GitHub Actions を使う方法もあり、`.github/workflows/pages.yml` が用意してあります）。しばらくして `https://<ユーザー名>.github.io/<リポジトリ名>/` が開けば公開完了。
 4. 記録をGitHubに保存するための**アクセストークン**を作る。
    - GitHub右上のアイコン → Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token
    - Repository access は **Only select repositories** でこのリポジトリだけを選ぶ
@@ -20,6 +20,10 @@
 5. アプリを開き、右上の **設定** にユーザー名・リポジトリ名・トークンを入れて「保存して反映」。画面上部が「GitHubに保存済み」になれば完了。
 
 トークンは、その端末のブラウザの中だけに保存されます（リポジトリには入りません）。スマホでも使う場合は、スマホでも同じ設定をします。
+
+## ほかのパソコンやスマホで使う
+
+データはGitHubのリポジトリにあるので、どの端末からでも同じ記録を見られます。端末ごとに必要なのは、アプリのアドレスを開いて、右上の「設定」にアクセストークンを貼り付けることだけです。別の端末で直した記録は、その端末に画面を戻したときに自動で取り込まれます。共用のパソコンで使ったあとは、「設定」の「この端末の設定を消す」を押してください。
 
 ## 使い方のポイント
 

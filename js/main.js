@@ -4,7 +4,7 @@
   const J = window.JD, S = window.JDStore, A = window.A, LS = S.LS;
   const $ = id => document.getElementById(id);
   let terms = [], term = null, sha = null, mode = "local";
-  let dirty = false, saving = false, ver = 0, timer = null, banner = null;
+  let dirty = false, saving = false, ver = 0, timer = null, banner = null, forgetArmed = false;
 
   const stamp = () => { const d = new Date(); return J.ds(d) + " " + J.pad(d.getHours()) + ":" + J.pad(d.getMinutes()); };
   function normalize(st) {
@@ -149,8 +149,21 @@
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
+  /* 別のパソコンで直した内容を、画面に戻ったときに取り込む */
+  async function refreshLatest() {
+    if (mode !== "github" || dirty || saving || !term) return;
+    try {
+      const r = await S.remoteGet(S.getSettings(), "data/" + term.file);
+      if (dirty || saving || r.sha === sha) return;
+      A.st = normalize(JSON.parse(r.text)); sha = r.sha; A.ui.open = null; render();
+      toast("別の端末の最新の記録に更新しました");
+    } catch (e) { /* 通信できないときは何もしない */ }
+  }
+
   /* ---------- 設定ダイアログ ---------- */
   function openSettings() {
+    forgetArmed = false;
+    const fb = document.querySelector('[data-act="forget"]'); if (fb) fb.textContent = "この端末の設定を消す";
     const s = S.getSettings();
     $("s_owner").value = s.owner; $("s_repo").value = s.repo; $("s_branch").value = s.branch; $("s_token").value = s.token; $("s_msg").textContent = "";
     $("dlg").showModal();
@@ -194,6 +207,12 @@
       case "test": testConn(); break;
       case "save-settings": S.saveSettings(readForm()); $("dlg").close(); loadTerm(term ? term.id : null); break;
       case "export": exportJson(); break;
+      case "forget": {
+        if (dirty) { $("s_msg").textContent = "まだ保存していない変更があります。先に保存するか、「JSONを書き出す」を押してください。"; break; }
+        if (!forgetArmed) { forgetArmed = true; t.textContent = "もう一度押すと、設定を消します"; break; }
+        LS.del("jd.settings"); terms.forEach(x => LS.del("jd.draft." + x.id));
+        $("dlg").close(); toast("この端末の設定を消しました"); loadTerm(term.id); break;
+      }
       case "b-push": banner = null; flush(); break;
       case "b-force": forcePush(); break;
       case "b-discard": case "b-reload": LS.del("jd.draft." + term.id); loadTerm(term.id); break;
@@ -215,7 +234,10 @@
     else if (a === "un") { A.st.unitNotes[t.dataset.id] = v; commit(); }
   });
   window.addEventListener("beforeunload", e => { if (dirty && mode === "github") { e.preventDefault(); e.returnValue = ""; } });
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && dirty) { clearTimeout(timer); flush(); } });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && dirty) { clearTimeout(timer); flush(); }
+    else if (document.visibilityState === "visible") refreshLatest();
+  });
 
   /* ---------- 起動 ---------- */
   (async function boot() {
