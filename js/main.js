@@ -37,12 +37,30 @@
     $("banner").innerHTML = b ? '<div class="banner' + (b.err ? " err" : "") + '"><div>' + J.esc(b.msg) + '</div><div class="btns">' +
       (b.btns || []).map(x => '<button class="btn" data-act="' + x[0] + '">' + J.esc(x[1]) + "</button>").join("") + "</div></div>" : "";
   }
+  function scrollGridToToday(g) {
+    const row = g.querySelector("tr.gr-today");
+    if (row) g.scrollTop += row.getBoundingClientRect().top - g.getBoundingClientRect().top - 150;
+    g.scrollLeft = 0;
+  }
+  function fillCell() {
+    const html = A.ui.cell ? A.views.cell(A.ui.cell) : null;
+    if (html == null) { if ($("celldlg").open) $("celldlg").close(); return; }
+    $("cellbody").innerHTML = html;
+  }
   function render() {
     if (!A.st) return;
     $("sub").textContent = A.st.term.name + "（" + J.md(A.st.term.start) + "〜" + J.md(A.st.term.end) + "）";
     $("asof").value = A.ui.asof;
-    ["today", "plan", "unit", "sum"].forEach(t => $("tab-" + t).setAttribute("aria-selected", A.ui.tab === t));
+    ["today", "plan", "grid", "unit", "sum"].forEach(t => $("tab-" + t).setAttribute("aria-selected", A.ui.tab === t));
+    document.querySelector(".wrap").classList.toggle("wide", A.ui.tab === "grid");
+    const old = document.querySelector(".gridwrap");
+    const keep = old && !A.ui.gridReset ? { t: old.scrollTop, l: old.scrollLeft } : null;
     $("app").innerHTML = A.views[A.ui.tab]();
+    const g = document.querySelector(".gridwrap");
+    if (g) { if (keep) { g.scrollTop = keep.t; g.scrollLeft = keep.l; } else scrollGridToToday(g); }
+    A.ui.gridReset = false;
+    if (A.ui.cell && A.ui.cellRefresh) fillCell();
+    A.ui.cellRefresh = false;
     renderStatus(); renderBanner();
   }
   function fatal(msg) {
@@ -184,9 +202,14 @@
     const a = t.dataset.act, k = t.dataset.key, id = t.dataset.id;
     switch (a) {
       case "open": A.ui.open = A.ui.open === k ? null : k; render(); break;
-      case "st": { const cur = (A.st.rec[k] || {}).s || "plan", v = t.dataset.v; setRec(k, { s: cur === v && v !== "plan" ? "plan" : v }); break; }
-      case "offset": A.st.off[k] = A.st.events[k.split("|")[1]] || "授業なし"; delete A.st.rec[k]; A.ui.open = null; commit(); break;
-      case "offclear": delete A.st.off[k]; commit(); break;
+      case "cell": A.ui.cell = k; fillCell(); if (!$("celldlg").open) $("celldlg").showModal(); break;
+      case "close-cell": $("celldlg").close(); break;
+      case "gord": A.ui.gridOrder = t.dataset.v; A.ui.gridReset = false; render(); break;
+      case "gsub": A.ui.gridSubj = t.dataset.v; render(); break;
+      case "gridtoday": { const g = document.querySelector(".gridwrap"); if (g) scrollGridToToday(g); break; }
+      case "st": A.ui.cellRefresh = true; { const cur = (A.st.rec[k] || {}).s || "plan", v = t.dataset.v; setRec(k, { s: cur === v && v !== "plan" ? "plan" : v }); break; }
+      case "offset": A.ui.cellRefresh = true; A.st.off[k] = A.st.events[k.split("|")[1]] || "授業なし"; delete A.st.rec[k]; A.ui.open = null; commit(); break;
+      case "offclear": A.ui.cellRefresh = true; delete A.st.off[k]; commit(); break;
       case "cls": A.ui.cls = id; A.ui.open = null; render(); break;
       case "goplan": A.ui.cls = id; A.ui.tab = "plan"; A.ui.open = null; render(); window.scrollTo(0, 0); break;
       case "pfilter": A.ui.planAll = t.dataset.v === "all"; render(); break;
@@ -220,7 +243,7 @@
   });
   document.addEventListener("change", e => {
     const t = e.target, a = t.dataset && t.dataset.act, v = t.value;
-    if (t.id === "asof") { if (v) { A.ui.asof = v; A.ui.open = null; render(); } return; }
+    if (t.id === "asof") { if (v) { A.ui.asof = v; A.ui.open = null; A.ui.gridReset = true; render(); } return; }
     if (t.id === "term") { loadTerm(v); return; }
     if (t.id === "importfile") { importFile(t.files[0]); $("dlg").close(); return; }
     if (!a) return;
@@ -233,6 +256,10 @@
     else if (a === "allot") { const u = A.st.units[t.dataset.u]; if (v === "") delete u.allot[t.dataset.c]; else u.allot[t.dataset.c] = Math.max(0, Number(v) || 0); commit(); }
     else if (a === "un") { A.st.unitNotes[t.dataset.id] = v; commit(); }
   });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.matches && e.target.matches('td[data-act="cell"]')) e.target.click();
+  });
+  $("celldlg").addEventListener("close", () => { A.ui.cell = null; });
   window.addEventListener("beforeunload", e => { if (dirty && mode === "github") { e.preventDefault(); e.returnValue = ""; } });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden" && dirty) { clearTimeout(timer); flush(); }

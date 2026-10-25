@@ -33,12 +33,15 @@
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-today" data-tab="today"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none"/></svg><span>今日</span></button>
       <button class="tab" role="tab" id="tab-plan" data-tab="plan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg><span>計画表</span></button>
+      <button class="tab" role="tab" id="tab-grid" data-tab="grid"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="1.5"/><path d="M3.5 10h17M9.2 5.5v13M14.8 5.5v13"/></svg><span>一覧</span></button>
       <button class="tab" role="tab" id="tab-unit" data-tab="unit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span>単元別</span></button>
       <button class="tab" role="tab" id="tab-sum" data-tab="sum"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6"/></svg><span>サマリー</span></button>
     </div>
   </div>
   <main id="app"></main>
 </div>
+
+<dialog id="celldlg" aria-label="コマの記録"><div id="cellbody"></div></dialog>
 
 <dialog id="dlg" aria-labelledby="dlg-title">
   <h2 id="dlg-title">設定</h2>

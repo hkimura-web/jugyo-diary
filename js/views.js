@@ -2,7 +2,7 @@
 (function (root) {
   "use strict";
   const J = root.JD, { esc, md, dw, addDays, hrsOf } = J;
-  const A = root.A = { st: null, ui: { tab: "today", cls: null, open: null, planAll: false, asof: J.ds(new Date()) } };
+  const A = root.A = { st: null, ui: { tab: "today", cls: null, open: null, planAll: false, asof: J.ds(new Date()), gridOrder: "class", gridSubj: "all", cell: null } };
 
   const LABEL = { plan: "予定", done: "実施", part: "途中まで", cancel: "休講", free: "別の内容", off: "授業なし", empty: "計画なし" };
   const PILL = { plan: "p-plan", done: "p-done", part: "p-part", cancel: "p-cancel", free: "p-free", off: "p-off", empty: "p-warn" };
@@ -220,5 +220,68 @@
     return h + panel("p-rem", "いつ・何をやったか（全コマ）", rows.length + "日", tb + "</tbody></table></div>");
   }
 
-  A.views = { today: viewToday, plan: viewPlan, unit: viewUnit, sum: viewSummary };
+
+  /* ---------- 一覧（スプレッドシートのように、日付×授業を1枚で見る） ---------- */
+  function gridCell(r, c, asof, unitChip) {
+    const k = r.kind, sk = "k-" + subj(c.name);
+    if (k === "off") return '<td class="gc off" title="' + esc(r.off) + '"><span class="gx">' + esc(clip(r.off, 16)) + "</span></td>";
+    const waiting = r.date < asof && k === "plan";
+    let text, memo = (r.rec && r.rec.n) || "", mark = "";
+    if (k === "cancel") { text = "休講"; }
+    else if (k === "free") text = r.rec.t || "別の内容";
+    else if (k === "empty") text = "（計画なし）";
+    else text = (r.cont ? "（続き）" : "") + r.blocks.map(b => b.t).join(" ／ ");
+    if (k === "done") mark = '<span class="gk ok">実施</span>';
+    else if (k === "part") mark = '<span class="gk mid">途中</span>';
+    else if (waiting) mark = '<span class="gk wait">記録待ち</span>';
+    const fl = A.st.flags && A.st.flags[r.key];
+    const full = plain(text) + (memo ? "／" + memo : "");
+    return '<td class="gc ' + sk + " s-" + k + (waiting ? " s-wait" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(full) + '">' +
+      '<div class="gtop">' + (unitChip ? '<span class="gu">' + esc(unitChip) + "</span>" : "") + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + mark + "</div>" +
+      '<div class="gt">' + (fl ? '<span class="flagchip">' + esc(fl) + "</span> " : "") + esc(plain(text)) + "</div>" + (memo ? '<div class="gm">' + esc(memo) + "</div>" : "") + "</td>";
+  }
+  function viewGrid() {
+    const st = A.st, asof = A.ui.asof;
+    let cls = st.classes.slice();
+    if (A.ui.gridSubj !== "all") cls = cls.filter(c => subj(c.name) === A.ui.gridSubj);
+    if (A.ui.gridOrder === "subject") cls = cls.map((c, i) => ({ c, i })).sort((a, b) => (subj(a.c.name) === subj(b.c.name) ? 0 : subj(a.c.name) === "gen" ? -1 : 1) || a.i - b.i).map(x => x.c);
+    const stats = {}, rmap = {};
+    cls.forEach(c => { stats[c.id] = J.classStats(st, c, asof); rmap[c.id] = {}; stats[c.id].pj.rows.forEach(r => { rmap[c.id][r.date] = r; }); });
+    const prefixes = [];
+    st.classes.forEach(c => { const p = parts(c.name)[0]; if (prefixes.indexOf(p) < 0) prefixes.push(p); });
+    const grp = c => prefixes.indexOf(parts(c.name)[0]) % 4 + 1;
+    const seg = (act, cur, items) => '<div class="seg">' + items.map(x => '<button data-act="' + act + '" data-v="' + x[0] + '" aria-pressed="' + (cur === x[0]) + '">' + x[1] + "</button>").join("") + "</div>";
+    let h = '<div class="gridbar">' + seg("gord", A.ui.gridOrder, [["class", "クラス順"], ["subject", "科目ごと"]]) +
+      seg("gsub", A.ui.gridSubj, [["all", "すべて"], ["gen", "現代の国語"], ["lang", "言語文化"]]) +
+      '<button class="btn" data-act="gridtoday">今日の位置へ</button><span class="note">コマをタップすると、記録・休講・内容の書き換えができます。</span></div>';
+    h += '<div class="gridwrap" tabindex="-1"><table class="gridt" style="--n:' + cls.length + '"><colgroup><col class="col-d"><col class="col-e">' + cls.map(() => '<col class="col-c">').join("") + "</colgroup><thead><tr>" +
+      '<th class="c-date" rowspan="2">日</th><th class="c-ev" rowspan="2">行事</th>' +
+      cls.map(c => '<th class="gh1 g' + grp(c) + '">' + esc(c.short) + "<small>" + esc(c.tt.map(t => J.DOW[t[0]] + t[1]).join("・")) + "</small></th>").join("") + "</tr><tr>" +
+      cls.map(c => '<th class="gh2 g' + grp(c) + '">残り <b class="num">' + stats[c.id].remain + "</b> 時間</th>").join("") + "</tr></thead><tbody>";
+    const lastUnit = {};
+    for (let d = st.term.start; d <= st.term.end; d = addDays(d, 1)) {
+      const w = J.pd(d).getDay(), ev = st.events[d] || "";
+      let active = 0, cells = "";
+      cls.forEach(c => {
+        const r = rmap[c.id][d];
+        if (!r) { cells += '<td class="gc"></td>'; return; }
+        let chip = "";
+        if (r.blocks.length) { const u = r.blocks[0].u; if (lastUnit[c.id] !== u) { chip = unitName(u); lastUnit[c.id] = u; } }
+        if (r.kind !== "off") active++;
+        cells += gridCell(r, c, asof, chip);
+      });
+      const wk = w === 0 || w === 6;
+      h += '<tr class="' + (d === asof ? "gr-today " : "") + (w === 1 ? "mon " : "") + (!active ? (wk ? "wk" : "none") : "") + '"' + (d === asof ? ' id="gr-today"' : "") + '><td class="c-date"><b class="num">' + md(d) + '</b><span class="dow">' + dw(d) + '</span></td><td class="c-ev" title="' + esc(ev) + '">' + esc(clip(ev, 70)) + "</td>" + cells + "</tr>";
+    }
+    return h + "</tbody></table></div>";
+  }
+  function viewCell(key) {
+    const c = A.st.classes.find(x => x.id === key.split("|")[0]);
+    const r = c && J.project(A.st, c).rows.find(x => x.key === key);
+    if (!r) return null;
+    return "<h2>" + esc(c.name) + "　" + md(r.date) + "（" + dw(r.date) + "）</h2>" + (r.ev ? '<p class="note" style="margin:0 0 6px">行事：' + esc(r.ev) + "</p>" : "") +
+      '<p class="cell-now">' + pillFor(r) + " <b>" + esc(rowTitle(r)) + "</b></p>" + editor(r) + '<div class="dlg-btns"><button class="btn on" data-act="close-cell">閉じる</button></div>';
+  }
+
+  A.views = { today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };
 })(window);
