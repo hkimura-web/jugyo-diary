@@ -6,7 +6,7 @@
   --accent:#2b4a9b; --accent-soft:#e1e8f8; --on-solid:#ffffff; --remain:#a8b8e2;
   --band:#1c2f68; --band2:#2f4f9e; --band-ink:#ffffff; --hero-field:rgba(255,255,255,.95); --hero-field-ink:#1b2533;
   --gen:#2b4a9b; --gen-soft:#e6ecfa; --gen-line:#c7d3f0; --gen-ink:#27428a;
-  --lang:#1d7a76; --lang-soft:#e0f2f0; --lang-line:#bfe0dc; --lang-ink:#176561;
+  --lang:#c4577f; --lang-soft:#fce8ef; --lang-line:#f3c3d3; --lang-ink:#9a3459;
   --sand-soft:#f6eedf; --sand-ink:#75561b;
   --done:#1d7552; --done-soft:#dcf0e6;
   --part:#94540a; --part-soft:#fbebd0;
@@ -23,7 +23,7 @@
   --accent:#92acf2; --accent-soft:#222f55; --on-solid:#0d1626; --remain:#4a5f9a;
   --band:#15264f; --band2:#233b7c; --hero-field:rgba(255,255,255,.14); --hero-field-ink:#eef2f8;
   --gen:#92acf2; --gen-soft:#1d2845; --gen-line:#2f3f6b; --gen-ink:#adc0f6;
-  --lang:#6cc6c0; --lang-soft:#14302f; --lang-line:#245250; --lang-ink:#8fd8d2;
+  --lang:#ec8fb0; --lang-soft:#3a1f2b; --lang-line:#5e2f42; --lang-ink:#f4b4cc;
   --sand-soft:#322a18; --sand-ink:#e3c37e;
   --done:#5cc79a; --done-soft:#17352a; --part:#e6aa5c; --part-soft:#3a2c14;
   --cancel:#f08c82; --cancel-soft:#3e201d; --free:#bb9fe7; --free-soft:#2d2347;
@@ -36,7 +36,7 @@
   --accent:#92acf2; --accent-soft:#222f55; --on-solid:#0d1626; --remain:#4a5f9a;
   --band:#15264f; --band2:#233b7c; --hero-field:rgba(255,255,255,.14); --hero-field-ink:#eef2f8;
   --gen:#92acf2; --gen-soft:#1d2845; --gen-line:#2f3f6b; --gen-ink:#adc0f6;
-  --lang:#6cc6c0; --lang-soft:#14302f; --lang-line:#245250; --lang-ink:#8fd8d2;
+  --lang:#ec8fb0; --lang-soft:#3a1f2b; --lang-line:#5e2f42; --lang-ink:#f4b4cc;
   --sand-soft:#322a18; --sand-ink:#e3c37e;
   --done:#5cc79a; --done-soft:#17352a; --part:#e6aa5c; --part-soft:#3a2c14;
   --cancel:#f08c82; --cancel-soft:#3e201d; --free:#bb9fe7; --free-soft:#2d2347;
@@ -51,7 +51,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);fo
   padding-block:env(safe-area-inset-top,0px) calc(48px + env(safe-area-inset-bottom,0px));
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .wrap{max-width:1000px;margin:0 auto}
-.wrap.wide{max-width:1700px}
+.wrap.wide{max-width:none}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums}
@@ -354,3 +354,9 @@ dialog#celldlg{max-height:calc(100vh - 24px);overflow:auto}
 .glegend{display:inline-flex;gap:10px;font-size:12px;align-items:center}
 .glegend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:2px solid}
 .glegend .lg-gen{background:var(--gen-soft);border-color:var(--gen)} .glegend .lg-lang{background:var(--lang-soft);border-color:var(--lang)}
+
+/* ---- 一覧：画面の幅いっぱいに全クラスを並べる（横スクロールなし） ---- */
+.gridt,.gridt.edit{--we:120px;width:100%;min-width:1180px}
+.gridt col.col-c{width:auto}
+.gridt .gsel,.gridt .gta,.gridt .gin{min-width:0}
+.hero h1{letter-spacing:.01em}
