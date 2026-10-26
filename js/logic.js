@@ -50,7 +50,8 @@
     const pj = project(st, cls);
     const fut = pj.rows.filter(r => r.date >= asof && (r.kind === "plan" || r.kind === "empty"));
     const remain = fut.reduce((a, r) => a + r.hrs, 0);
-    const spare = fut.reduce((a, r) => a + Math.max(0, r.hrs - r.used), 0);
+    const blank = r => r.blocks.filter(b => !(b.t || "").trim()).reduce((x, b) => x + hrsOf(b), 0);
+    const spare = fut.reduce((a, r) => a + Math.max(0, r.hrs - r.used) + Math.min(r.hrs, blank(r)), 0);
     const needed = pj.left.reduce((a, b) => a + hrsOf(b), 0);
     return { pj, remain, needed, spare };
   }

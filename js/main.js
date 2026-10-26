@@ -10,6 +10,7 @@
   function normalize(st) {
     ["rec", "off", "flags", "events", "units", "plans", "unitNotes"].forEach(k => { st[k] = st[k] || {}; });
     st.classes.forEach(c => { st.plans[c.id] = st.plans[c.id] || []; });
+    Object.keys(st.units).forEach(u => { if (!Array.isArray(st.units[u].items)) st.units[u].items = []; });
     return st;
   }
   function clampAsof() {
@@ -110,6 +111,13 @@
     render();
     clearTimeout(timer); timer = setTimeout(flush, 1500);
   }
+  /* 入力中の保存：画面は作り直さず（入力欄のカーソルを保つ）、下書きと自動保存だけ進める */
+  function quiet() {
+    ver++; dirty = true;
+    LS.set("jd.draft." + term.id, JSON.stringify({ st: A.st, dirty: true }));
+    renderStatus();
+    clearTimeout(timer); timer = setTimeout(flush, 1500);
+  }
   async function flush() {
     if (!dirty || mode !== "github") { renderStatus(); return; }
     if (saving) { clearTimeout(timer); timer = setTimeout(flush, 600); return; }
@@ -136,6 +144,17 @@
 
   /* ---------- 変更操作 ---------- */
   function blockById(id) { for (const c in A.st.plans) { const b = A.st.plans[c].find(x => x.id === id); if (b) return b; } return null; }
+  function planOf(id) { for (const c in A.st.plans) if (A.st.plans[c].some(x => x.id === id)) return c; return null; }
+  function rowOf(key) {
+    const c = A.st.classes.find(x => x.id === key.split("|")[0]);
+    return c ? { c, r: J.project(A.st, c).rows.find(x => x.key === key) } : null;
+  }
+  function newBlockId(c) { return "b" + c + "_" + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36); }
+  function shiftBlock(id, dir) {
+    const c = planOf(id); if (!c) return; const a = A.st.plans[c], i = a.findIndex(b => b.id === id), j = i + dir;
+    if (j < 0 || j >= a.length) { toast(dir < 0 ? "これより前には動かせません" : "これより後ろには動かせません"); return; }
+    [a[i], a[j]] = [a[j], a[i]]; A.ui.cellRefresh = true; commit();
+  }
   function setRec(key, patch) {
     const nx = Object.assign({}, A.st.rec[key] || {}, patch);
     if (!nx.s || nx.s === "plan") { delete nx.s; delete nx.t; }
@@ -143,10 +162,43 @@
     if (!nx.s && !nx.n) delete A.st.rec[key]; else A.st.rec[key] = nx;
     commit();
   }
+  function setRecQuiet(key, patch) {
+    const nx = Object.assign({}, A.st.rec[key] || {}, patch);
+    if (!nx.s || nx.s === "plan") { delete nx.s; delete nx.t; }
+    else if (nx.s !== "free") delete nx.t;
+    if (!nx.s && !nx.n) delete A.st.rec[key]; else A.st.rec[key] = nx;
+    quiet();
+  }
   function move(id, dir) {
     const cls = A.ui.cls, a = A.st.plans[cls], i = a.findIndex(b => b.id === id), j = i + dir;
     if (i < 0 || j < J.firstPendingIndex(A.st, A.st.classes.find(c => c.id === cls), A.ui.asof) || j >= a.length) return;
     [a[i], a[j]] = [a[j], a[i]]; commit();
+  }
+  /* コマに授業内容を入れる。計画のないコマは先頭から順に埋まるので、手前の空きコマには「内容なし」を置いてつなぐ */
+  function insertAt(key, u, tx, where) {
+    const o = rowOf(key); if (!o || !o.r) return false;
+    if (!u || !A.st.units[u]) { toast("先に単元を選んでください"); return false; }
+    const arr = A.st.plans[o.c.id], h = o.r.hrs > 1 ? 2 : 1;
+    const nb = { id: newBlockId(o.c.id), u, t: tx, h };
+    if (o.r.blocks.length) {
+      const at = where === "before" ? arr.indexOf(o.r.blocks[0]) : arr.indexOf(o.r.blocks[o.r.blocks.length - 1]) + 1;
+      arr.splice(at, 0, nb);
+    } else {
+      const rows = J.project(A.st, o.c).rows, before = rows.filter(x => x.kind === "empty" && x.date < o.r.date);
+      before.forEach(x => arr.push({ id: newBlockId(o.c.id), u, t: "", h: x.hrs }));
+      arr.push(nb);
+    }
+    A.ui.lastUnit[o.c.id] = u;
+    return true;
+  }
+  function newUnit(nm) {
+    let n = 1; while (A.st.units["u" + n]) n++;
+    A.st.units["u" + n] = { name: nm, allot: {}, items: [] };
+    return "u" + n;
+  }
+  function askNewUnit() {
+    const nm = (window.prompt("新しい単元の名前を入れてください（例：羅生門）") || "").trim();
+    return nm ? newUnit(nm) : null;
   }
   function importFile(f) {
     if (!f) return;
@@ -202,14 +254,27 @@
     const a = t.dataset.act, k = t.dataset.key, id = t.dataset.id;
     switch (a) {
       case "open": A.ui.open = A.ui.open === k ? null : k; render(); break;
-      case "cell": A.ui.cell = k; fillCell(); if (!$("celldlg").open) $("celldlg").showModal(); break;
+      case "cell": A.ui.cell = k; A.ui.addUnit = null; fillCell(); if (!$("celldlg").open) $("celldlg").showModal(); break;
       case "close-cell": $("celldlg").close(); break;
       case "gord": A.ui.gridOrder = t.dataset.v; A.ui.gridReset = false; render(); break;
+      case "gedit": A.ui.gridEdit = t.dataset.v === "e"; LS.set("jd.gridEdit", A.ui.gridEdit ? "1" : "0"); render(); break;
       case "gsub": A.ui.gridSubj = t.dataset.v; render(); break;
       case "gridtoday": { const g = document.querySelector(".gridwrap"); if (g) scrollGridToToday(g); break; }
       case "st": A.ui.cellRefresh = true; { const cur = (A.st.rec[k] || {}).s || "plan", v = t.dataset.v; setRec(k, { s: cur === v && v !== "plan" ? "plan" : v }); break; }
       case "offset": A.ui.cellRefresh = true; A.st.off[k] = A.st.events[k.split("|")[1]] || "授業なし"; delete A.st.rec[k]; A.ui.open = null; commit(); break;
       case "offclear": A.ui.cellRefresh = true; delete A.st.off[k]; commit(); break;
+      case "bup": shiftBlock(id, -1); break;
+      case "bdn": shiftBlock(id, 1); break;
+      case "bdel": { const c = planOf(id); if (c) { A.st.plans[c] = A.st.plans[c].filter(b => b.id !== id); A.ui.cellRefresh = true; commit(); } break; }
+      case "cins": {
+        if (insertAt(k, $("cu").value, $("ct").value.trim(), t.dataset.v)) { A.ui.addUnit = $("cu").value; A.ui.cellRefresh = true; commit(); }
+        break;
+      }
+      case "cnewunit": {
+        const nm = $("cnu").value.trim(); if (!nm) { toast("単元名を入れてください"); break; }
+        let n = 1; while (A.st.units["u" + n]) n++;
+        A.st.units["u" + n] = { name: nm, allot: {}, items: [] }; A.ui.addUnit = "u" + n; A.ui.cellRefresh = true; commit(); break;
+      }
       case "cls": A.ui.cls = id; A.ui.open = null; render(); break;
       case "goplan": A.ui.cls = id; A.ui.tab = "plan"; A.ui.open = null; render(); window.scrollTo(0, 0); break;
       case "pfilter": A.ui.planAll = t.dataset.v === "all"; render(); break;
@@ -223,7 +288,7 @@
       case "addunit": {
         const nm = $("newunit").value.trim(); if (!nm) { toast("単元名を入れてください"); break; }
         let n = 1; while (A.st.units["u" + n]) n++;
-        A.st.units["u" + n] = { name: nm, allot: {} }; commit(); break;
+        A.st.units["u" + n] = { name: nm, allot: {}, items: [] }; commit(); break;
       }
       case "settings": openSettings(); break;
       case "close-dlg": $("dlg").close(); break;
@@ -247,19 +312,52 @@
     if (t.id === "term") { loadTerm(v); return; }
     if (t.id === "importfile") { importFile(t.files[0]); $("dlg").close(); return; }
     if (!a) return;
-    if (a === "note") setRec(t.dataset.key, { n: v.trim() });
-    else if (a === "ft") setRec(t.dataset.key, { t: v.trim() });
-    else if (a === "bt" || a === "blk-t") { const b = blockById(t.dataset.id); if (b && v.trim()) { b.t = v.trim(); commit(); } }
-    else if (a === "blk-u") { const b = blockById(t.dataset.id); if (b) { b.u = v; commit(); } }
-    else if (a === "blk-h") { const b = blockById(t.dataset.id); if (b) { b.h = Number(v) || 1; commit(); } }
+    if (a === "note") { setRecQuiet(t.dataset.key, { n: v.trim() }); }
+    else if (a === "ft") { setRecQuiet(t.dataset.key, { t: v.trim() }); }
+    else if (a === "bt" || a === "blk-t") { const b = blockById(t.dataset.id); if (b) { b.t = v.trim(); quiet(); } }
+    else if (a === "blk-u") {
+      const b = blockById(t.dataset.id); if (!b) return;
+      if (v === "__new") { const u = askNewUnit(); if (u) b.u = u; }
+      else b.u = v;
+      A.ui.lastUnit[planOf(b.id)] = b.u; A.ui.cellRefresh = true; commit();
+    }
+    else if (a === "bpick") { const b = blockById(t.dataset.id), u = b && A.st.units[b.u], it = u && u.items.filter(Boolean)[Number(v)]; if (b && it != null && v !== "") { b.t = it; A.ui.cellRefresh = true; commit(); } }
+    else if (a === "gnew-u") {
+      const cid = t.dataset.c; let u = v;
+      if (v === "__new") u = askNewUnit();
+      if (u) A.ui.lastUnit[cid] = u;
+      commit();
+    }
+    else if (a === "gnew-pick") {
+      const td = t.closest("td"), u = td.querySelector(".gnew-u").value, un = A.st.units[u], it = un && un.items.filter(Boolean)[Number(v)];
+      if (u === "__new" || it == null || v === "") return;
+      if (insertAt(t.dataset.key, u, it, "after")) commit();
+    }
+    else if (a === "gnew-t") {
+      const tx = v.trim(); if (!tx) return;
+      const u = t.closest("td").querySelector(".gnew-u").value;
+      if (u === "__new") { toast("先に単元を選んでください"); return; }
+      if (insertAt(t.dataset.key, u, tx, "after")) commit();
+    }
+    else if (a === "cu") { A.ui.addUnit = v; const p = $("cp"); if (p) { const u = A.st.units[v]; p.innerHTML = '<option value="">単元の予定から選ぶ…</option>' + (u ? u.items.filter(Boolean) : []).map((x, i) => '<option value="' + i + '">' + (i + 1) + "　" + J.esc(x.length > 50 ? x.slice(0, 50) + "…" : x) + "</option>").join(""); } }
+    else if (a === "cp") { const u = A.st.units[$("cu").value], it = u && u.items.filter(Boolean)[Number(v)]; if (it != null && v !== "") { $("ct").value = it; } }
+    else if (a === "un-items") { const u = A.st.units[t.dataset.id]; if (u) { u.items = v.split("\n").map(x => x.trim()).filter(Boolean); commit(); } }
+    else if (a === "blk-h") { const b = blockById(t.dataset.id); if (b) { b.h = Number(v) || 1; A.ui.cellRefresh = true; commit(); } }
     else if (a === "un-name") { const u = A.st.units[t.dataset.id]; if (u && v.trim()) { u.name = v.trim(); commit(); } }
     else if (a === "allot") { const u = A.st.units[t.dataset.u]; if (v === "") delete u.allot[t.dataset.c]; else u.allot[t.dataset.c] = Math.max(0, Number(v) || 0); commit(); }
     else if (a === "un") { A.st.unitNotes[t.dataset.id] = v; commit(); }
   });
+  document.addEventListener("input", e => {
+    const t = e.target, a = t.dataset && t.dataset.act, v = t.value;
+    if (!a || t.tagName === "SELECT") return;
+    if (a === "note") setRecQuiet(t.dataset.key, { n: v.trim() });
+    else if (a === "ft") setRecQuiet(t.dataset.key, { t: v.trim() });
+    else if (a === "bt" || a === "blk-t") { const b = blockById(t.dataset.id); if (b) { b.t = v.trim(); quiet(); } }
+  });
   document.addEventListener("keydown", e => {
     if (e.key === "Enter" && e.target.matches && e.target.matches('td[data-act="cell"]')) e.target.click();
   });
-  $("celldlg").addEventListener("close", () => { A.ui.cell = null; });
+  $("celldlg").addEventListener("close", () => { A.ui.cell = null; render(); });
   window.addEventListener("beforeunload", e => { if (dirty && mode === "github") { e.preventDefault(); e.returnValue = ""; } });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden" && dirty) { clearTimeout(timer); flush(); }
@@ -276,6 +374,7 @@
     if (!terms.length) { fatal("data/index.json を読み込めませんでした。"); return; }
     $("term").innerHTML = terms.map(t => '<option value="' + J.esc(t.id) + '">' + J.esc(t.name) + "</option>").join("");
     $("termwrap").hidden = terms.length < 2;
+    A.ui.gridEdit = LS.get("jd.gridEdit") !== "0";
     const saved = LS.get("jd.term");
     await loadTerm(terms.some(t => t.id === saved) ? saved : terms[terms.length - 1].id);
   })();

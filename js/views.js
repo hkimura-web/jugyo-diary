@@ -2,7 +2,7 @@
 (function (root) {
   "use strict";
   const J = root.JD, { esc, md, dw, addDays, hrsOf } = J;
-  const A = root.A = { st: null, ui: { tab: "today", cls: null, open: null, planAll: false, asof: J.ds(new Date()), gridOrder: "class", gridSubj: "all", cell: null } };
+  const A = root.A = { st: null, ui: { tab: "today", cls: null, open: null, planAll: false, asof: J.ds(new Date()), gridOrder: "class", gridSubj: "all", cell: null, gridEdit: true, lastUnit: {} } };
 
   const LABEL = { plan: "予定", done: "実施", part: "途中まで", cancel: "休講", free: "別の内容", off: "授業なし", empty: "計画なし" };
   const PILL = { plan: "p-plan", done: "p-done", part: "p-part", cancel: "p-cancel", free: "p-free", off: "p-off", empty: "p-warn" };
@@ -49,7 +49,7 @@
     if (r.kind === "cancel") return "休講";
     if (r.kind === "free") return r.rec.t || "別の内容";
     if (r.kind === "empty") return "この日に入れる計画がありません";
-    return (r.cont ? "（続き）" : "") + r.blocks.map(b => b.t).join("　／　");
+    return (r.cont ? "（続き）" : "") + (r.blocks.map(b => b.t).filter(Boolean).join("　／　") || "（内容未入力）");
   }
   function pillFor(r) {
     const waiting = r.date < A.ui.asof && r.kind === "plan";
@@ -183,7 +183,7 @@
         else if (al != null && al !== "") { const diff = x.slotsU - al; d = diff === 0 ? '<span class="pill p-ok">配当どおり</span>' : '<span class="pill p-warn">' + (diff > 0 ? "+" : "") + diff + "</span>"; }
         b += "<tr><td>" + esc(c.name) + '</td><td><input class="num-in" type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(c.name) + 'の配当" data-act="allot" data-u="' + u + '" data-c="' + c.id + '" value="' + (al == null ? "" : al) + '"></td><td>' + x.planned + "</td><td>" + x.actual + "</td><td>" + (x.start ? md(x.start) + "〜" + md(x.end) : "−") + "</td><td>" + d + "</td></tr>";
       });
-      b += '</tbody></table></div><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
+      b += '</tbody></table></div><label class="small unitnote" for="ui_' + u + '">この単元の授業内容の予定（1行＝1コマ。一覧の画面で選んで使えます）</label><textarea id="ui_' + u + '" data-act="un-items" data-id="' + u + '" style="min-height:110px" placeholder="例：\n導入・語句の確認\n本文の読解①\n本文の読解②\nまとめ・小テスト">' + esc((un.items || []).join("\n")) + '</textarea><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
       h += panel("p-soon", esc(un.name), "", b);
     });
     return h + panel("p-ev", "単元を追加", "", '<div class="addrow" style="grid-template-columns:1fr auto"><input type="text" id="newunit" aria-label="単元名" placeholder="単元名（例：羅生門）"><button class="btn on" data-act="addunit">追加</button></div>');
@@ -222,22 +222,65 @@
 
 
   /* ---------- 一覧（スプレッドシートのように、日付×授業を1枚で見る） ---------- */
+  /* 一覧の編集モード：コマの中で、単元・授業内容・記録・状態を直接直せる */
+  function defaultUnit(c) {
+    const l = A.ui.lastUnit[c.id];
+    if (l && A.st.units[l]) return l;
+    const bl = A.st.plans[c.id] || [];
+    return bl.length ? bl[bl.length - 1].u : Object.keys(A.st.units)[0];
+  }
+  function gridCellEdit(r, c, asof) {
+    const k = r.kind, sk = "k-" + subj(c.name), key = esc(r.key), s = (r.rec && r.rec.s) || "plan";
+    const waiting = r.date < asof && k === "plan";
+    const St = (v, t) => '<button class="mini' + (s === v ? " on" : "") + '" data-act="st" data-key="' + key + '" data-v="' + v + '" aria-pressed="' + (s === v) + '">' + t + "</button>";
+    let h = '<div class="gtop">' + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + (waiting ? '<span class="gk wait">記録待ち</span>' : "") +
+      (r.ev ? '<span class="gk ev" title="' + esc(r.ev) + '">行事</span>' : "") +
+      '<button class="mini more" data-act="cell" data-key="' + key + '" title="順番の入れ替え・削除など">詳細</button></div>';
+    if (r.ev) h += '<div class="gev">行事：' + esc(clip(r.ev, 40)) + "</div>";
+    h += '<div class="gst">' + St("done", "実施") + St("part", "途中") + St("cancel", "休講") + St("free", "別") + St("plan", "予定") +
+      '<button class="mini" data-act="offset" data-key="' + key + '" title="行事などで授業なし（休校）にする">なし</button></div>';
+    if (s === "cancel") h += '<div class="gnote">休講（以降の計画が後ろへずれます）</div>';
+    else if (s === "free") h += '<input type="text" class="gin" aria-label="何をやったか" placeholder="何をやったか" data-act="ft" data-key="' + key + '" value="' + esc(r.rec.t || "") + '">';
+    else if (r.blocks.length) {
+      r.blocks.forEach(b => {
+        h += '<div class="gblk' + (r.cont ? " cont" : "") + '"><select class="gsel" aria-label="単元" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u, true) + "</select>" +
+          '<select class="gsel pick" aria-label="単元の予定から入れる" data-act="bpick" data-id="' + esc(b.id) + '">' + itemOptions(b.u, c.id) + "</select>" +
+          '<textarea class="gta" aria-label="授業内容" placeholder="授業内容" data-act="bt" data-id="' + esc(b.id) + '">' + esc(b.t) + "</textarea></div>";
+      });
+    } else {
+      const u = defaultUnit(c);
+      h += '<div class="gblk new"><select class="gsel gnew-u" aria-label="単元" data-act="gnew-u" data-c="' + esc(c.id) + '">' + unitOptions(u, true) + "</select>" +
+        '<select class="gsel pick" aria-label="単元の予定から入れる" data-act="gnew-pick" data-key="' + key + '">' + itemOptions(u, c.id) + "</select>" +
+        '<textarea class="gta" aria-label="授業内容" placeholder="授業内容を入力（計画なし）" data-act="gnew-t" data-key="' + key + '"></textarea></div>';
+    }
+    h += '<textarea class="gta gmemo" aria-label="実施しての記録" placeholder="記録（どこまで進んだか）" data-act="note" data-key="' + key + '">' + esc((r.rec && r.rec.n) || "") + "</textarea>";
+    return '<td class="gc has edit ' + sk + " s-" + k + (waiting ? " s-wait" : "") + '">' + h + "</td>";
+  }
   function gridCell(r, c, asof, unitChip) {
     const k = r.kind, sk = "k-" + subj(c.name);
-    if (k === "off") return '<td class="gc off" title="' + esc(r.off) + '"><span class="gx">' + esc(clip(r.off, 16)) + "</span></td>";
+    if (k === "off") {
+      const closed = /休校|休講/.test(r.off);
+      return '<td class="gc has off ' + sk + (closed ? " closed" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(r.off) + '">' +
+        '<div class="gtop"><span class="gk off">' + (closed ? "休校" : "授業なし") + "</span>" + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + "</div>" +
+        '<div class="gt">' + esc(clip(r.off, 40)) + '</div></td>';
+    }
+    if (A.ui.gridEdit) return gridCellEdit(r, c, asof);
     const waiting = r.date < asof && k === "plan";
     let text, memo = (r.rec && r.rec.n) || "", mark = "";
+    const blank = k === "plan" && r.blocks.length && r.blocks.every(b => !(b.t || "").trim());
     if (k === "cancel") { text = "休講"; }
     else if (k === "free") text = r.rec.t || "別の内容";
     else if (k === "empty") text = "（計画なし）";
-    else text = (r.cont ? "（続き）" : "") + r.blocks.map(b => b.t).join(" ／ ");
+    else if (blank) text = "（内容を入力）";
+    else text = (r.cont ? "（続き）" : "") + r.blocks.map(b => b.t).filter(Boolean).join(" ／ ");
     if (k === "done") mark = '<span class="gk ok">実施</span>';
     else if (k === "part") mark = '<span class="gk mid">途中</span>';
     else if (waiting) mark = '<span class="gk wait">記録待ち</span>';
     const fl = A.st.flags && A.st.flags[r.key];
-    const full = plain(text) + (memo ? "／" + memo : "");
-    return '<td class="gc ' + sk + " s-" + k + (waiting ? " s-wait" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(full) + '">' +
-      '<div class="gtop">' + (unitChip ? '<span class="gu">' + esc(unitChip) + "</span>" : "") + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + mark + "</div>" +
+    const evTag = r.ev ? '<span class="gk ev" title="' + esc(r.ev) + '">行事</span>' : "";
+    const full = plain(text) + (memo ? "／" + memo : "") + (r.ev ? "／行事：" + r.ev : "");
+    return '<td class="gc has ' + sk + " s-" + k + (blank ? " s-blank" : "") + (waiting ? " s-wait" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(full) + '">' +
+      '<div class="gtop">' + (unitChip ? '<span class="gu">' + esc(unitChip) + "</span>" : "") + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + evTag + mark + "</div>" +
       '<div class="gt">' + (fl ? '<span class="flagchip">' + esc(fl) + "</span> " : "") + esc(plain(text)) + "</div>" + (memo ? '<div class="gm">' + esc(memo) + "</div>" : "") + "</td>";
   }
   function viewGrid() {
@@ -253,11 +296,12 @@
     const seg = (act, cur, items) => '<div class="seg">' + items.map(x => '<button data-act="' + act + '" data-v="' + x[0] + '" aria-pressed="' + (cur === x[0]) + '">' + x[1] + "</button>").join("") + "</div>";
     let h = '<div class="gridbar">' + seg("gord", A.ui.gridOrder, [["class", "クラス順"], ["subject", "科目ごと"]]) +
       seg("gsub", A.ui.gridSubj, [["all", "すべて"], ["gen", "現代の国語"], ["lang", "言語文化"]]) +
-      '<button class="btn" data-act="gridtoday">今日の位置へ</button><span class="note">コマをタップすると、記録・休講・内容の書き換えができます。</span></div>';
-    h += '<div class="gridwrap" tabindex="-1"><table class="gridt" style="--n:' + cls.length + '"><colgroup><col class="col-d"><col class="col-e">' + cls.map(() => '<col class="col-c">').join("") + "</colgroup><thead><tr>" +
+      seg("gedit", A.ui.gridEdit ? "e" : "v", [["e", "編集"], ["v", "見るだけ"]]) +
+      '<button class="btn" data-act="gridtoday">今日の位置へ</button><span class="glegend"><span><i class="lg-gen"></i>現代の国語</span><span><i class="lg-lang"></i>言語文化</span><span><i style="background:var(--today-soft);border-color:var(--today)"></i>今日</span></span><span class="note">' + (A.ui.gridEdit ? "コマの中で単元・内容・記録を直接直せます。「詳細」で順番の入れ替えなど。" : "コマをタップすると、記録・休講・内容の書き換えができます。") + '</span></div>';
+    h += '<div class="gridwrap" tabindex="-1"><table class="gridt' + (A.ui.gridEdit ? " edit" : "") + '" style="--n:' + cls.length + '"><colgroup><col class="col-d"><col class="col-e">' + cls.map(() => '<col class="col-c">').join("") + "</colgroup><thead><tr>" +
       '<th class="c-date" rowspan="2">日</th><th class="c-ev" rowspan="2">行事</th>' +
-      cls.map(c => '<th class="gh1 g' + grp(c) + '">' + esc(c.short) + "<small>" + esc(c.tt.map(t => J.DOW[t[0]] + t[1]).join("・")) + "</small></th>").join("") + "</tr><tr>" +
-      cls.map(c => '<th class="gh2 g' + grp(c) + '">残り <b class="num">' + stats[c.id].remain + "</b> 時間</th>").join("") + "</tr></thead><tbody>";
+      cls.map(c => '<th class="gh1 hs-' + subj(c.name) + '">' + esc(c.short) + "<small>" + esc(c.tt.map(t => J.DOW[t[0]] + t[1]).join("・")) + "</small></th>").join("") + "</tr><tr>" +
+      cls.map(c => '<th class="gh2 hs-' + subj(c.name) + '">残り <b class="num">' + stats[c.id].remain + "</b> 時間</th>").join("") + "</tr></thead><tbody>";
     const lastUnit = {};
     for (let d = st.term.start; d <= st.term.end; d = addDays(d, 1)) {
       const w = J.pd(d).getDay(), ev = st.events[d] || "";
@@ -275,12 +319,58 @@
     }
     return h + "</tbody></table></div>";
   }
+  function unitOptions(sel, withNew) {
+    return Object.keys(A.st.units).map(u => '<option value="' + u + '"' + (u === sel ? " selected" : "") + ">" + esc(A.st.units[u].name) + "</option>").join("") +
+      (withNew ? '<option value="__new">＋ 新しい単元をつくる…</option>' : "");
+  }
+  /* 単元の予定（単元別タブで立てたもの）。このクラスで使用済みのものには ✓ を付ける */
+  function itemOptions(u, cid) {
+    const items = ((A.st.units[u] || {}).items || []).filter(Boolean);
+    const used = {};
+    ((A.st.plans[cid] || [])).forEach(b => { if (b.u === u && b.t) used[b.t] = 1; });
+    return '<option value="">' + (items.length ? "単元の予定から選ぶ…" : "（予定なし）") + '</option>' +
+      items.map((t, i) => '<option value="' + i + '">' + (used[t] ? "✓ " : "") + (i + 1) + "　" + esc(clip(t, 40)) + "</option>").join("");
+  }
   function viewCell(key) {
     const c = A.st.classes.find(x => x.id === key.split("|")[0]);
     const r = c && J.project(A.st, c).rows.find(x => x.key === key);
     if (!r) return null;
-    return "<h2>" + esc(c.name) + "　" + md(r.date) + "（" + dw(r.date) + "）</h2>" + (r.ev ? '<p class="note" style="margin:0 0 6px">行事：' + esc(r.ev) + "</p>" : "") +
-      '<p class="cell-now">' + pillFor(r) + " <b>" + esc(rowTitle(r)) + "</b></p>" + editor(r) + '<div class="dlg-btns"><button class="btn on" data-act="close-cell">閉じる</button></div>';
+    const k = esc(r.key), s = (r.rec && r.rec.s) || "plan", id = sid(r.key);
+    let h = "<h2>" + esc(c.name) + "　" + md(r.date) + "（" + dw(r.date) + "）" + (r.hrs > 1 ? "　" + r.hrs + "時間" : "") + "</h2>" +
+      (r.ev ? '<p class="note" style="margin:0 0 6px">行事：' + esc(r.ev) + "</p>" : "") +
+      '<p class="cell-now">' + pillFor(r) + " <b>" + esc(rowTitle(r)) + "</b></p>";
+    if (r.kind === "off") {
+      h += '<div class="note" style="margin-bottom:8px">授業なしの理由：' + esc(r.off) + '</div><div class="btns"><button class="btn" data-act="offclear" data-key="' + k + '">この日は授業を行う</button></div>';
+      return h + '<div class="dlg-btns"><button class="btn on" data-act="close-cell">閉じる</button></div>';
+    }
+    const B = (v, t) => '<button class="btn' + (s === v ? " on" : "") + '" data-act="st" data-key="' + k + '" data-v="' + v + '">' + t + "</button>";
+    h += '<div class="csec">このコマの状態</div><div class="btns">' + B("done", "実施した") + B("part", "途中まで") + B("cancel", "休講にする") + B("free", "別の内容にする") +
+      '<button class="btn" data-act="offset" data-key="' + k + '">行事で授業なし</button>' + B("plan", "予定に戻す") + "</div>";
+    if (s === "free") h += '<label for="ft_' + id + '">何をやったか</label><input type="text" id="ft_' + id + '" data-act="ft" data-key="' + k + '" value="' + esc(r.rec.t || "") + '" placeholder="例：学年集会、テスト返却">';
+    if (s === "cancel") h += '<p class="note" style="margin:8px 0 0">このコマは使わず、以降の計画が自動で後ろへずれました。</p>';
+    if (s !== "cancel" && s !== "free") {
+      h += '<div class="csec">授業の単元と内容</div>';
+      r.blocks.forEach((b, i) => {
+        const x = J.unitStats(A.st, c, b.u), al = (A.st.units[b.u] || { allot: {} }).allot[c.id];
+        h += '<div class="cbk"><div class="row2"><div><label for="bu_' + id + i + '">単元</label><select id="bu_' + id + i + '" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u) + "</select></div>" +
+          '<div><label for="bp_' + id + i + '">単元の予定から入れる</label><select id="bp_' + id + i + '" data-act="bpick" data-id="' + esc(b.id) + '">' + itemOptions(b.u, c.id) + "</select></div></div>" +
+          '<p class="hint">この単元：計画 ' + x.planned + "時間" + (al != null && al !== "" ? "／配当 " + al + "時間" : "") + "</p>" +
+          '<label for="bt_' + id + i + '">授業内容（空にすると内容なしになります）</label><textarea id="bt_' + id + i + '" data-act="bt" data-id="' + esc(b.id) + '" placeholder="授業内容を入力">' + esc(b.t) + "</textarea>" +
+          '<div class="btns" style="margin-top:6px"><select aria-label="時間" data-act="blk-h" data-id="' + esc(b.id) + '" style="width:auto"><option value="1"' + (hrsOf(b) === 1 ? " selected" : "") + '>1時間</option><option value="2"' + (hrsOf(b) === 2 ? " selected" : "") + ">2時間</option></select>" +
+          '<button class="btn sm" data-act="bup" data-id="' + esc(b.id) + '">▲ 前のコマへ</button><button class="btn sm" data-act="bdn" data-id="' + esc(b.id) + '">▼ 後のコマへ</button>' +
+          '<button class="btn sm danger" data-act="bdel" data-id="' + esc(b.id) + '">この内容を削除（以降が前に詰まる）</button></div></div>';
+      });
+      const au = A.ui.addUnit && A.st.units[A.ui.addUnit] ? A.ui.addUnit : (r.blocks.length ? r.blocks[r.blocks.length - 1].u : Object.keys(A.st.units)[0]);
+      h += '<div class="cadd"><h3>' + (r.blocks.length ? "授業内容を追加する" : "このコマに授業内容を入れる") + '</h3><div class="row2"><div><label for="cu">単元</label><select id="cu" data-act="cu">' + unitOptions(au) + "</select></div>" +
+        '<div><label for="cp">単元の予定から入れる</label><select id="cp" data-act="cp">' + itemOptions(au, c.id) + "</select></div></div>" +
+        '<label for="ct">授業内容</label><textarea id="ct" placeholder="授業内容を入力"></textarea>' +
+        '<div class="btns" style="margin-top:6px"><select id="ch" aria-label="時間" style="width:auto"><option value="1"' + (r.kind === "empty" && r.hrs === 1 || r.hrs === 1 ? " selected" : "") + '>1時間</option><option value="2"' + (r.hrs > 1 ? " selected" : "") + ">2時間</option></select>" +
+        (r.blocks.length ? '<button class="btn" data-act="cins" data-key="' + k + '" data-v="before">このコマの前に入れる</button><button class="btn" data-act="cins" data-key="' + k + '" data-v="after">このコマの後に入れる</button>'
+          : '<button class="btn on" data-act="cins" data-key="' + k + '" data-v="after">このコマに入れる</button>') + "</div>" +
+        '<div class="cnu"><input type="text" id="cnu" placeholder="新しい単元名（なければ作る）" aria-label="新しい単元名"><button class="btn" data-act="cnewunit">単元を作る</button></div></div>';
+    }
+    h += '<div class="csec">実施しての記録</div><div class="cmemo"><textarea id="' + id + '" data-act="note" data-key="' + k + '" placeholder="どこまで進んだか、気づいたこと" style="min-height:80px">' + esc((r.rec && r.rec.n) || "") + "</textarea></div>";
+    return h + '<div class="dlg-btns"><button class="btn on" data-act="close-cell">閉じる</button></div>';
   }
 
   A.views = { today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };

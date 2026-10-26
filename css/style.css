@@ -13,6 +13,7 @@
   --cancel:#a3362d; --cancel-soft:#f8e1de;
   --free:#66399c; --free-soft:#ebe3f6;
   --off:#6f7d8b; --off-soft:#e8ecf0;
+  --today:#e8710a; --today-soft:#ffe9d0; --today-ink:#7a3600; --lesson:#47546f;
   --g1:#f3e3e8; --g1i:#7a3447; --g2:#f5ebd3; --g2i:#75561b; --g3:#e2eddc; --g3i:#3d6a2e; --g4:#e7e2f3; --g4i:#55407f;
   --f-body:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
   --f-disp:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
@@ -27,6 +28,7 @@
   --done:#5cc79a; --done-soft:#17352a; --part:#e6aa5c; --part-soft:#3a2c14;
   --cancel:#f08c82; --cancel-soft:#3e201d; --free:#bb9fe7; --free-soft:#2d2347;
   --off:#8896a3; --off-soft:#232d37;
+  --today:#ffa04d; --today-soft:#4a3016; --today-ink:#ffd2a1; --lesson:#8b98bd;
   --g1:#3b2530; --g1i:#e9b0c2; --g2:#3a301a; --g2i:#e3c37e; --g3:#1f3224; --g3i:#a8d6a0; --g4:#2c2740; --g4i:#c4b4ec;
   color-scheme:dark;}}
 :root[data-theme="dark"]{
@@ -39,6 +41,7 @@
   --done:#5cc79a; --done-soft:#17352a; --part:#e6aa5c; --part-soft:#3a2c14;
   --cancel:#f08c82; --cancel-soft:#3e201d; --free:#bb9fe7; --free-soft:#2d2347;
   --off:#8896a3; --off-soft:#232d37;
+  --today:#ffa04d; --today-soft:#4a3016; --today-ink:#ffd2a1; --lesson:#8b98bd;
   --g1:#3b2530; --g1i:#e9b0c2; --g2:#3a301a; --g2i:#e3c37e; --g3:#1f3224; --g3i:#a8d6a0; --g4:#2c2740; --g4i:#c4b4ec;
   color-scheme:dark;}
 
@@ -233,7 +236,7 @@ a{color:var(--accent)}
 .gridt thead .c-date,.gridt thead .c-ev{z-index:5;vertical-align:middle}
 .gridt tr{--rowbg:var(--surface)}
 .gridt tr.none{--rowbg:var(--bg2)} .gridt tr.wk{--rowbg:var(--off-soft)}
-.gridt tr.gr-today{--rowbg:var(--accent-soft)}
+.gridt tr.gr-today{--rowbg:var(--today-soft)}
 .gridt td.c-date{position:sticky;left:0;z-index:2;background:var(--rowbg);white-space:nowrap}
 .gridt td.c-ev{position:sticky;left:78px;z-index:2;background:var(--rowbg);font-size:11.5px;color:var(--muted)}
 .gridt thead .c-date{left:0} .gridt thead .c-ev{left:78px}
@@ -242,7 +245,9 @@ a{color:var(--accent)}
 .gridt tr.mon td{border-top:2px solid var(--muted)}
 .gridt tr.none td.c-ev,.gridt tr.wk td.c-ev{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gridt tr.wk td,.gridt tr.none td{padding-top:2px;padding-bottom:2px}
-.gridt tr.gr-today td.c-date{box-shadow:inset 3px 0 0 var(--accent)}
+.gridt tr.gr-today td.c-date{box-shadow:inset 5px 0 0 var(--today);color:var(--today-ink)}
+.gridt tr.gr-today td.c-date b{color:var(--today-ink)}
+.gridt tr.gr-today td.c-date .dow::after{content:" 今日";font-weight:700;color:var(--today)}
 .gridt td.gc{background:var(--surface)}
 .gridt tr.none td.gc,.gridt tr.wk td.gc{background:var(--rowbg)}
 .gc[data-act]{cursor:pointer}
@@ -254,8 +259,20 @@ a{color:var(--accent)}
 .gc.s-cancel{background:var(--cancel-soft)} .gc.s-cancel .gt{color:var(--cancel);font-weight:700}
 .gc.s-free{background:var(--free-soft)}
 .gc.s-empty .gt{color:var(--muted);font-style:italic}
-.gc.s-wait{box-shadow:inset 0 0 0 2px var(--part)}
-.gc.off{background:var(--off-soft);color:var(--off);font-size:11px}
+.gc.s-wait .gt{color:var(--part)}
+.gc.off{background:repeating-linear-gradient(135deg,var(--off-soft) 0 8px,var(--surface) 8px 16px);color:var(--ink);font-size:12px}
+.gc.off .gt{font-weight:700;color:var(--off)}
+.gc.s-cancel{background:repeating-linear-gradient(135deg,var(--cancel-soft) 0 8px,var(--surface) 8px 16px)}
+/* 授業がある日（時間割どおりのコマ）は太い枠で囲む */
+.gridt td.gc.has{border:2px solid var(--lesson);padding:4px 6px}
+.gridt td.gc.has.off{border-style:dashed}
+.gridt tr.gr-today td.gc.has{border-color:var(--today);background-color:var(--today-soft)}
+.gridt tr.gr-today td.gc.has.off,.gridt tr.gr-today td.gc.has.s-cancel{background:repeating-linear-gradient(135deg,var(--today-soft) 0 8px,var(--surface) 8px 16px)}
+.gridt tr.gr-today td.gc.has{box-shadow:inset 0 0 0 1px var(--today)}
+.gk.off{background:var(--cancel-soft);color:var(--cancel);margin-left:0}
+.gk.ev{background:var(--sand-soft);color:var(--sand-ink);margin-left:0}
+.gk.blank{background:var(--bg2);color:var(--muted);margin-left:0}
+.gc.s-blank .gt{color:var(--muted);font-style:italic}
 .gtop{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:2px}
 .gtop:empty{display:none}
 .gu{font-size:11px;font-weight:700;padding:0 6px;border-radius:4px;background:var(--bg2);color:var(--ink)}
@@ -279,3 +296,61 @@ dialog#celldlg{max-width:min(560px,calc(100vw - 24px))}
   .gridt td.c-ev{position:static;font-size:11px} .gridt thead .c-ev{position:static}
   .gridwrap{max-height:calc(100vh - 150px)}
 }
+
+/* ---- 一覧のコマ編集ダイアログ ---- */
+dialog#celldlg{max-height:calc(100vh - 24px);overflow:auto}
+.cbk{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px;background:var(--bg)}
+.cbk h3{margin:0 0 4px;font-size:14px}
+.cbk .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cbk .hint{font-size:12px;color:var(--muted);margin:2px 0 0}
+.cadd{border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px}
+.cadd h3{margin:0 0 4px;font-size:14px}
+.cmemo{margin:0 0 10px}
+.cnu{display:flex;gap:6px;margin-top:6px}
+.csec{font-size:12px;color:var(--muted);margin:12px 0 4px;font-weight:700}
+.items-ed textarea{min-height:110px}
+@media (max-width:520px){.cbk .row2{grid-template-columns:1fr}}
+
+/* ---- 一覧：編集モード（コマの中で直接入力） ---- */
+.gridt.edit{--wc:232px}
+.gridt td.gc.edit{padding:5px 6px;cursor:default}
+.gc.edit .gtop{align-items:center}
+.gc.edit .gtop .more{margin-left:auto}
+.gev{font-size:11px;color:var(--sand-ink);background:var(--sand-soft);border-radius:4px;padding:1px 6px;margin-bottom:3px;overflow-wrap:anywhere}
+.gst{display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px}
+.mini{font:inherit;font-size:10.5px;line-height:1.2;padding:2px 4px;border-radius:5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.mini:hover{border-color:var(--accent)}
+.mini.on{background:var(--accent);border-color:var(--accent);color:var(--on-solid);font-weight:700}
+.gblk{display:grid;gap:3px;margin-bottom:4px}
+.gsel,.gin,.gta{width:100%;font:inherit;font-size:12px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:3px 5px;box-sizing:border-box}
+.gsel{padding:2px 3px}
+.gsel.pick{color:var(--muted)}
+.gta{min-height:54px;resize:vertical;line-height:1.4}
+.gta.gmemo{min-height:34px;background:var(--bg2);margin-top:2px}
+.gta:focus,.gsel:focus,.gin:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.gblk.new .gta{border-style:dashed}
+.gnote{font-size:11.5px;color:var(--cancel);margin-bottom:3px}
+.gc.edit.s-done{box-shadow:inset 4px 0 0 var(--done)}
+.gc.edit.s-part{box-shadow:inset 4px 0 0 var(--part)}
+.gc.off.closed{border-color:var(--cancel)!important}
+.gc.off.closed .gt{color:var(--cancel)}
+.gc.off .gm{font-size:10.5px}
+.gridt tr.gr-today td.gc.edit{box-shadow:inset 0 0 0 1px var(--today)}
+@media (max-width:640px){.gridt.edit{--wc:200px}}
+
+/* ---- 一覧：科目ごとに同じ色（クラスが違っても同じ科目なら同じ色） ---- */
+.gridt thead th.hs-gen{background:var(--gen-line)!important;color:var(--gen-ink)}
+.gridt thead th.hs-lang{background:var(--lang-line)!important;color:var(--lang-ink)}
+.gridt thead th.hs-etc{background:var(--bg2)!important}
+.gridt td.gc.has.k-gen:not(.off):not(.s-cancel){background-color:var(--gen-soft)}
+.gridt td.gc.has.k-lang:not(.off):not(.s-cancel){background-color:var(--lang-soft)}
+.gridt td.gc.has.k-gen{border-color:var(--gen)}
+.gridt td.gc.has.k-lang{border-color:var(--lang)}
+.gc.k-gen.s-free{background-color:var(--gen-soft)} .gc.k-lang.s-free{background-color:var(--lang-soft)}
+.gridt tr.gr-today td.gc.has{border-color:var(--today)}
+.gridt tr.gr-today td.gc.has:not(.off):not(.s-cancel){background-color:var(--today-soft)}
+.gridt tr.gr-today td.gc.has.k-gen,.gridt tr.gr-today td.gc.has.k-lang{box-shadow:inset 0 -4px 0 var(--solid)}
+.gridt td.gc.has.off.k-gen,.gridt td.gc.has.off.k-lang{border-color:var(--solid)}
+.glegend{display:inline-flex;gap:10px;font-size:12px;align-items:center}
+.glegend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:2px solid}
+.glegend .lg-gen{background:var(--gen-soft);border-color:var(--gen)} .glegend .lg-lang{background:var(--lang-soft);border-color:var(--lang)}
