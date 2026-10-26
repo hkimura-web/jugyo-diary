@@ -310,7 +310,7 @@
         const r = rmap[c.id][d];
         if (!r) { cells += '<td class="gc"></td>'; return; }
         let chip = "";
-        if (r.blocks.length) { const u = r.blocks[0].u; if (lastUnit[c.id] !== u) { chip = unitName(u); lastUnit[c.id] = u; } }
+        if (r.blocks.length) chip = r.blocks.map(b => unitName(b.u)).filter((x, i, arr) => arr.indexOf(x) === i).join("・");
         if (r.kind !== "off") active++;
         cells += gridCell(r, c, asof, chip);
       });
@@ -346,10 +346,12 @@
     const B = (v, t) => '<button class="btn' + (s === v ? " on" : "") + '" data-act="st" data-key="' + k + '" data-v="' + v + '">' + t + "</button>";
     h += '<div class="csec">このコマの状態</div><div class="btns">' + B("done", "実施した") + B("part", "途中まで") + B("cancel", "休講にする") + B("free", "別の内容にする") +
       '<button class="btn" data-act="offset" data-key="' + k + '">行事で授業なし</button>' + B("plan", "予定に戻す") + "</div>";
-    if (s === "free") h += '<label for="ft_' + id + '">何をやったか</label><input type="text" id="ft_' + id + '" data-act="ft" data-key="' + k + '" value="' + esc(r.rec.t || "") + '" placeholder="例：学年集会、テスト返却">';
+    if (s === "free") h += '<p class="note" style="margin:8px 0 0">「別の内容」は、計画とは別のこと（学年集会・テスト返却など）をやった日用です。計画の授業内容として入れたいときは「予定に戻す」を押してください。</p>' +
+      '<label for="ft_' + id + '">何をやったか</label><input type="text" id="ft_' + id + '" data-act="ft" data-key="' + k + '" value="' + esc(r.rec.t || "") + '" placeholder="例：学年集会、テスト返却">';
     if (s === "cancel") h += '<p class="note" style="margin:8px 0 0">このコマは使わず、以降の計画が自動で後ろへずれました。</p>';
     if (s !== "cancel" && s !== "free") {
       h += '<div class="csec">授業の単元と内容</div>';
+      if (r.kind === "empty") h += '<p class="note" style="margin:0 0 6px">このコマは計画がありません。下で単元と内容を入れて「このコマに入れる」を押すと、（計画なし）が消えます。</p>';
       r.blocks.forEach((b, i) => {
         const x = J.unitStats(A.st, c, b.u), al = (A.st.units[b.u] || { allot: {} }).allot[c.id];
         h += '<div class="cbk"><div class="row2"><div><label for="bu_' + id + i + '">単元</label><select id="bu_' + id + i + '" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u) + "</select></div>" +
