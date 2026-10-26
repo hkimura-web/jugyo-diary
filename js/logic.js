@@ -11,6 +11,21 @@
   const addDays = (s, n) => { const d = pd(s); d.setDate(d.getDate() + n); return ds(d); };
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const clone = o => JSON.parse(JSON.stringify(o));
+  /* クラス名「S1-1 現代の国語」から科目名（空白より後ろ）を取り出す */
+  const subjectOf = c => { const n = (c && c.name) || "", i = n.indexOf(" "); return i < 0 ? n : n.slice(i + 1).trim(); };
+  /* 単元に「科目」を持たせる。古いデータ（科目名が単元名の頭に付いている）は、科目を切り出して移行する */
+  function migrateUnits(st) {
+    const subs = []; st.classes.forEach(c => { const x = subjectOf(c); if (x && subs.indexOf(x) < 0) subs.push(x); });
+    Object.keys(st.units).forEach(u => {
+      const un = st.units[u];
+      if (typeof un.subj === "string") return;
+      const hit = subs.find(x => un.name.indexOf(x + " ") === 0 || un.name.indexOf(x + "　") === 0);
+      if (hit) { un.subj = hit; un.name = un.name.slice(hit.length).trim() || un.name; return; }
+      const used = {}; st.classes.forEach(c => { if ((st.plans[c.id] || []).some(b => b.u === u)) used[subjectOf(c)] = 1; });
+      const ks = Object.keys(used);
+      un.subj = ks.length === 1 ? ks[0] : "";
+    });
+  }
   const hrsOf = b => (b && b.h) || 1;
 
   /* 学期内の各日について、その授業の時間割に当たる日を「コマ」にする（1日1コマ、hrs=その日の時数）。 */
@@ -87,6 +102,6 @@
   }
   const toJSON = st => JSON.stringify(stable(st), null, 1) + "\n";
 
-  const api = { DOW, pad, ds, pd, md, dw, addDays, esc, clone, hrsOf, buildSlots, project, classStats, unitStats, firstPendingIndex, toJSON };
+  const api = { subjectOf, migrateUnits, DOW, pad, ds, pd, md, dw, addDays, esc, clone, hrsOf, buildSlots, project, classStats, unitStats, firstPendingIndex, toJSON };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.JD = api;
 })(typeof window !== "undefined" ? window : globalThis);

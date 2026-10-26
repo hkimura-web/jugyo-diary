@@ -2,7 +2,7 @@
 (function (root) {
   "use strict";
   const J = root.JD, { esc, md, dw, addDays, hrsOf } = J;
-  const A = root.A = { st: null, ui: { tab: "today", cls: null, open: null, planAll: false, asof: J.ds(new Date()), gridOrder: "class", gridSubj: "all", cell: null, gridEdit: true, lastUnit: {} } };
+  const A = root.A = { st: null, ui: { tab: "today", cls: null, open: null, planAll: false, asof: J.ds(new Date()), gridOrder: "class", gridSubj: "all", cell: null, gridEdit: true, lastUnit: {}, flow: { u: null, cls: {} } } };
 
   const LABEL = { plan: "予定", done: "実施", part: "途中まで", cancel: "休講", free: "別の内容", off: "授業なし", empty: "計画なし" };
   const PILL = { plan: "p-plan", done: "p-done", part: "p-part", cancel: "p-cancel", free: "p-free", off: "p-off", empty: "p-warn" };
@@ -153,7 +153,7 @@
         s.pj.left.map(bk => '<div class="blk"><span><span class="chip">' + esc(unitName(bk.u)) + "</span> " + esc(clip(bk.t, 120)) + "</span></div>").join(""));
     }
     const bl = st.plans[cls.id] || [], from = J.firstPendingIndex(st, cls, asof);
-    const unitOpts = sel => Object.keys(st.units).map(u => '<option value="' + u + '"' + (u === sel ? " selected" : "") + ">" + esc(st.units[u].name) + "</option>").join("");
+    const unitOpts = sel => unitOptions(sel, false, cls.id);
     let pb = "<p class='note' style='margin-top:0'>順番に、空いているコマへ入っていきます。内容・単元・時間を直したり、並べ替えたりできます。</p>";
     bl.forEach((bk, i) => {
       if (i < from) return;
@@ -166,14 +166,48 @@
     return h + panel("p-soon", "これからの計画ブロック", "", pb);
   }
 
+
+  /* ---------- 単元の予定を、各クラスの計画へ順に流し込む ---------- */
+  function flowItems(u, cid) {
+    const used = {};
+    (A.st.plans[cid] || []).forEach(b => { if (b.u === u && b.t) used[b.t] = 1; });
+    const all = ((A.st.units[u] || {}).items || []).filter(Boolean);
+    return all.filter(t => !used[t]);
+  }
+  function viewFlow() {
+    const st = A.st, F = A.ui.flow, us = Object.keys(st.units);
+    if (!F.u || !st.units[F.u]) F.u = us[0];
+    const u = F.u, items = (st.units[u].items || []).filter(Boolean);
+    let h = "<h2>単元の予定を計画に入れる</h2>" +
+      '<p class="note" style="margin:0 0 8px">単元別タブで作った「授業内容の予定」を、選んだクラスの計画の最後に順番に追加します。計画のない日から前の順に埋まります。同じ内容がすでにそのクラスの計画にあれば、追加しません。</p>' +
+      '<label for="flow_u">単元</label><select id="flow_u" data-act="flow-u">' + unitOptions(u) + "</select>";
+    if (!items.length) return h + '<p class="note" style="margin-top:10px">この単元には「授業内容の予定」がまだありません。単元別タブで、1行＝1コマで書いてください。</p><div class="dlg-btns"><button class="btn on" data-act="flow-close">閉じる</button></div>';
+    h += '<div class="csec">入れるクラス（' + items.length + "コマ分の予定）</div>";
+    st.classes.forEach(c => {
+      const okSub = !st.units[u].subj || st.units[u].subj === J.subjectOf(c);
+      const add = okSub ? flowItems(u, c.id).length : 0, rows = J.project(st, c).rows, empty = rows.filter(r => r.kind === "empty").reduce((a, r) => a + r.hrs, 0);
+      h += '<label class="flowrow k-' + subj(c.name) + '"><input type="checkbox" data-act="flow-c" data-c="' + esc(c.id) + '"' + (F.cls[c.id] ? " checked" : "") + (add ? "" : " disabled") + "> <b>" + esc(c.name) + "</b>" +
+        '<span class="small">　追加 ' + add + "コマ／いま計画のない時間 " + empty + "時間" + (add > empty ? "（" + (add - empty) + "コマ分は学期内に入りきりません）" : "") + (!okSub ? "（科目が違うため対象外）" : add ? "" : "（追加なし：すべて入っています）") + "</span></label>";
+    });
+    const n = Object.keys(F.cls).filter(k => F.cls[k]).length;
+    return h + '<div class="dlg-btns" style="justify-content:space-between"><button class="btn" data-act="flow-all">全クラス選ぶ</button><span class="btns"><button class="btn" data-act="flow-close">閉じる</button><button class="btn on" data-act="flow-do"' + (n ? "" : " disabled") + ">選んだクラスに入れる</button></span></div>";
+  }
+
   /* ---------- 単元別 ---------- */
+  function subjectList() { const o = []; A.st.classes.forEach(c => { const x = J.subjectOf(c); if (x && o.indexOf(x) < 0) o.push(x); }); return o; }
   function viewUnit() {
     const st = A.st;
     let h = '<p class="note" style="margin-top:0">単元ごとに、配当（シラバス）・計画・実施した時間をクラス別に集計します。配当は入力できます。学期末の振り返りメモは、次回同じ授業をする時の参考になります。</p>';
-    Object.keys(st.units).forEach(u => {
+    const order = ["", ...subjectList()].map(x => x).sort((a, b) => (a === "" ? 1 : 0) - (b === "" ? 1 : 0));
+    const uKeys = Object.keys(st.units).sort((a, b) => order.indexOf(st.units[a].subj || "") - order.indexOf(st.units[b].subj || ""));
+    let lastSj = null;
+    uKeys.forEach(u => {
       const un = st.units[u];
-      const cs = st.classes.filter(c => (st.plans[c.id] || []).some(b => b.u === u) || un.allot[c.id] != null);
-      let b = '<label class="small" for="un_name_' + u + '">単元名</label><input type="text" id="un_name_' + u + '" data-act="un-name" data-id="' + u + '" value="' + esc(un.name) + '">' +
+      if ((un.subj || "") !== lastSj) { lastSj = un.subj || ""; h += '<h2 class="subjh k-' + subj(lastSj) + '">' + esc(lastSj || "共通") + "</h2>"; }
+      const cs = st.classes.filter(c => (st.plans[c.id] || []).some(b => b.u === u) || un.allot[c.id] != null || (un.subj && J.subjectOf(c) === un.subj));
+      const subjOpts = ["", ...subjectList()].map(x => '<option value="' + esc(x) + '"' + (x === (un.subj || "") ? " selected" : "") + ">" + esc(x || "共通（どの科目でも使う）") + "</option>").join("");
+      let b = '<div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label class="small" for="un_subj_' + u + '">科目</label><select id="un_subj_' + u + '" data-act="un-subj" data-id="' + u + '">' + subjOpts + '</select></div>' +
+        '<div><label class="small" for="un_name_' + u + '">単元名（科目名は付けない）</label><input type="text" id="un_name_' + u + '" data-act="un-name" data-id="' + u + '" value="' + esc(un.name) + '"></div></div>' +
         '<div class="tscroll" style="margin-top:8px"><table class="tbl"><thead><tr><th>クラス</th><th>配当（時間）</th><th>計画</th><th>実施済み</th><th>期間</th><th>差</th></tr></thead><tbody>';
       if (!cs.length) b += '<tr><td colspan="6" class="note">この単元を使うクラスはまだありません。</td></tr>';
       cs.forEach(c => {
@@ -183,10 +217,10 @@
         else if (al != null && al !== "") { const diff = x.slotsU - al; d = diff === 0 ? '<span class="pill p-ok">配当どおり</span>' : '<span class="pill p-warn">' + (diff > 0 ? "+" : "") + diff + "</span>"; }
         b += "<tr><td>" + esc(c.name) + '</td><td><input class="num-in" type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(c.name) + 'の配当" data-act="allot" data-u="' + u + '" data-c="' + c.id + '" value="' + (al == null ? "" : al) + '"></td><td>' + x.planned + "</td><td>" + x.actual + "</td><td>" + (x.start ? md(x.start) + "〜" + md(x.end) : "−") + "</td><td>" + d + "</td></tr>";
       });
-      b += '</tbody></table></div><label class="small unitnote" for="ui_' + u + '">この単元の授業内容の予定（1行＝1コマ。一覧の画面で選んで使えます）</label><textarea id="ui_' + u + '" data-act="un-items" data-id="' + u + '" style="min-height:110px" placeholder="例：\n導入・語句の確認\n本文の読解①\n本文の読解②\nまとめ・小テスト">' + esc((un.items || []).join("\n")) + '</textarea><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
-      h += panel("p-soon", esc(un.name), "", b);
+      b += '</tbody></table></div><div style="margin-top:12px"><button class="btn" data-act="flow-open" data-u="' + u + '">この単元の予定を各クラスの計画に入れる</button></div><label class="small unitnote" for="ui_' + u + '">この単元の授業内容の予定（1行＝1コマ。一覧の画面で選んで使えます）</label><textarea id="ui_' + u + '" data-act="un-items" data-id="' + u + '" style="min-height:110px" placeholder="例：\n導入・語句の確認\n本文の読解①\n本文の読解②\nまとめ・小テスト">' + esc((un.items || []).join("\n")) + '</textarea><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
+      h += panel("p-soon", esc(un.name), un.subj || "共通", b);
     });
-    return h + panel("p-ev", "単元を追加", "", '<div class="addrow" style="grid-template-columns:1fr auto"><input type="text" id="newunit" aria-label="単元名" placeholder="単元名（例：羅生門）"><button class="btn on" data-act="addunit">追加</button></div>');
+    return h + panel("p-ev", "単元を追加", "", '<div class="addrow" style="grid-template-columns:160px 1fr auto"><select id="newunit_s" aria-label="科目">' + ["", ...subjectList()].map(x => '<option value="' + esc(x) + '">' + esc(x || "共通") + "</option>").join("") + '</select><input type="text" id="newunit" aria-label="単元名" placeholder="単元名（例：羅生門）"><button class="btn on" data-act="addunit">追加</button></div>');
   }
 
   /* ---------- サマリー ---------- */
@@ -205,7 +239,7 @@
       if (!ru.length) return;
       const x = J.unitStats(st, cls, u), al = (st.units[u] || { allot: {} }).allot[cls.id];
       const firstB = ru[0].blocks.find(b => b.u === u), lastB = ru[ru.length - 1].blocks.filter(b => b.u === u).pop();
-      ub += '<div class="card ucard"><h3>' + esc(unitName(u)) + '</h3><div class="num">' + md(ru[0].date) + "〜" + md(ru[ru.length - 1].date) + "　" + x.slotsU + "時間（実施 " + x.actual + (al ? "／配当 " + al : "") + ")</div>" +
+      ub += '<div class="card ucard"><h3>' + esc(unitName(u)) + (st.units[u].subj ? ' <small class="muted">' + esc(st.units[u].subj) + "</small>" : "") + '</h3><div class="num">' + md(ru[0].date) + "〜" + md(ru[ru.length - 1].date) + "　" + x.slotsU + "時間（実施 " + x.actual + (al ? "／配当 " + al : "") + ")</div>" +
         '<p class="flow">はじめ：' + esc(clip(firstB.t, 46)) + "<br>おわり：" + esc(clip(lastB.t, 46)) + "</p>" +
         (st.unitNotes[u] ? '<p class="flow" style="color:var(--ink)">メモ：' + esc(clip(st.unitNotes[u], 120)) + "</p>" : "") + "</div>";
     });
@@ -227,7 +261,9 @@
     const l = A.ui.lastUnit[c.id];
     if (l && A.st.units[l]) return l;
     const bl = A.st.plans[c.id] || [];
-    return bl.length ? bl[bl.length - 1].u : Object.keys(A.st.units)[0];
+    const sj = J.subjectOf(c), ks = Object.keys(A.st.units).filter(u => !A.st.units[u].subj || A.st.units[u].subj === sj);
+    const last = bl.length ? bl[bl.length - 1].u : null;
+    return last && ks.indexOf(last) >= 0 ? last : (ks[0] || Object.keys(A.st.units)[0]);
   }
   function gridCellEdit(r, c, asof) {
     const k = r.kind, sk = "k-" + subj(c.name), key = esc(r.key), s = (r.rec && r.rec.s) || "plan";
@@ -243,13 +279,13 @@
     else if (s === "free") h += '<input type="text" class="gin" aria-label="何をやったか" placeholder="何をやったか" data-act="ft" data-key="' + key + '" value="' + esc(r.rec.t || "") + '">';
     else if (r.blocks.length) {
       r.blocks.forEach(b => {
-        h += '<div class="gblk' + (r.cont ? " cont" : "") + '"><select class="gsel" aria-label="単元" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u, true) + "</select>" +
+        h += '<div class="gblk' + (r.cont ? " cont" : "") + '"><select class="gsel" aria-label="単元" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u, true, c.id) + "</select>" +
           '<select class="gsel pick" aria-label="単元の予定から入れる" data-act="bpick" data-id="' + esc(b.id) + '">' + itemOptions(b.u, c.id) + "</select>" +
           '<textarea class="gta" aria-label="授業内容" placeholder="授業内容" data-act="bt" data-id="' + esc(b.id) + '">' + esc(b.t) + "</textarea></div>";
       });
     } else {
       const u = defaultUnit(c);
-      h += '<div class="gblk new"><select class="gsel gnew-u" aria-label="単元" data-act="gnew-u" data-c="' + esc(c.id) + '">' + unitOptions(u, true) + "</select>" +
+      h += '<div class="gblk new"><select class="gsel gnew-u" aria-label="単元" data-act="gnew-u" data-c="' + esc(c.id) + '">' + unitOptions(u, true, c.id) + "</select>" +
         '<select class="gsel pick" aria-label="単元の予定から入れる" data-act="gnew-pick" data-key="' + key + '">' + itemOptions(u, c.id) + "</select>" +
         '<textarea class="gta" aria-label="授業内容" placeholder="授業内容を入力（計画なし）" data-act="gnew-t" data-key="' + key + '"></textarea></div>';
     }
@@ -297,7 +333,7 @@
     let h = '<div class="gridbar">' + seg("gord", A.ui.gridOrder, [["class", "クラス順"], ["subject", "科目ごと"]]) +
       seg("gsub", A.ui.gridSubj, [["all", "すべて"], ["gen", "現代の国語"], ["lang", "言語文化"]]) +
       seg("gedit", A.ui.gridEdit ? "e" : "v", [["e", "編集"], ["v", "見るだけ"]]) +
-      '<button class="btn" data-act="gridtoday">今日の位置へ</button><span class="glegend"><span><i class="lg-gen"></i>現代の国語</span><span><i class="lg-lang"></i>言語文化</span><span><i style="background:var(--today-soft);border-color:var(--today)"></i>今日</span></span><span class="note">' + (A.ui.gridEdit ? "コマの中で単元・内容・記録を直接直せます。「詳細」で順番の入れ替えなど。" : "コマをタップすると、記録・休講・内容の書き換えができます。") + '</span></div>';
+      '<button class="btn" data-act="gridtoday">今日の位置へ</button><button class="btn" data-act="flow-open" title="単元別タブで作った予定を、各クラスの計画に順に入れます">単元の予定を計画に入れる</button><span class="glegend"><span><i class="lg-gen"></i>現代の国語</span><span><i class="lg-lang"></i>言語文化</span><span><i style="background:var(--today-soft);border-color:var(--today)"></i>今日</span></span><span class="note">' + (A.ui.gridEdit ? "コマの中で単元・内容・記録を直接直せます。「詳細」で順番の入れ替えなど。" : "コマをタップすると、記録・休講・内容の書き換えができます。") + '</span></div>';
     h += '<div class="gridwrap" tabindex="-1"><table class="gridt' + (A.ui.gridEdit ? " edit" : "") + '" style="--n:' + cls.length + '"><colgroup><col class="col-d"><col class="col-e">' + cls.map(() => '<col class="col-c">').join("") + "</colgroup><thead><tr>" +
       '<th class="c-date" rowspan="2">日</th><th class="c-ev" rowspan="2">行事</th>' +
       cls.map(c => '<th class="gh1 hs-' + subj(c.name) + '">' + esc(c.short) + "<small>" + esc(c.tt.map(t => J.DOW[t[0]] + t[1]).join("・")) + "</small></th>").join("") + "</tr><tr>" +
@@ -319,9 +355,21 @@
     }
     return h + "</tbody></table></div>";
   }
-  function unitOptions(sel, withNew) {
-    return Object.keys(A.st.units).map(u => '<option value="' + u + '"' + (u === sel ? " selected" : "") + ">" + esc(A.st.units[u].name) + "</option>").join("") +
-      (withNew ? '<option value="__new">＋ 新しい単元をつくる…</option>' : "");
+  const subjLabel = u => (A.st.units[u].subj || "共通");
+  /* 単元の選択肢。クラス(cid)を渡すと、そのクラスの科目の単元（と「共通」）だけに絞る。渡さなければ科目ごとにまとめて全部出す */
+  function unitOptions(sel, withNew, cid) {
+    const opt = u => '<option value="' + u + '"' + (u === sel ? " selected" : "") + ">" + esc(A.st.units[u].name) + "</option>";
+    const keys = Object.keys(A.st.units);
+    let h;
+    if (cid) {
+      const c = A.st.classes.find(x => x.id === cid), sj = c ? J.subjectOf(c) : "";
+      let ok = keys.filter(u => !A.st.units[u].subj || A.st.units[u].subj === sj || u === sel);
+      h = ok.filter(u => A.st.units[u].subj).map(opt).join("") + (ok.some(u => !A.st.units[u].subj) ? '<optgroup label="共通">' + ok.filter(u => !A.st.units[u].subj).map(opt).join("") + "</optgroup>" : "");
+    } else {
+      const groups = []; keys.forEach(u => { const g = subjLabel(u); if (groups.indexOf(g) < 0) groups.push(g); });
+      h = groups.map(g => '<optgroup label="' + esc(g) + '">' + keys.filter(u => subjLabel(u) === g).map(opt).join("") + "</optgroup>").join("");
+    }
+    return h + (withNew ? '<option value="__new">＋ 新しい単元をつくる…</option>' : "");
   }
   /* 単元の予定（単元別タブで立てたもの）。このクラスで使用済みのものには ✓ を付ける */
   function itemOptions(u, cid) {
@@ -354,7 +402,7 @@
       if (r.kind === "empty") h += '<p class="note" style="margin:0 0 6px">このコマは計画がありません。下で単元と内容を入れて「このコマに入れる」を押すと、（計画なし）が消えます。</p>';
       r.blocks.forEach((b, i) => {
         const x = J.unitStats(A.st, c, b.u), al = (A.st.units[b.u] || { allot: {} }).allot[c.id];
-        h += '<div class="cbk"><div class="row2"><div><label for="bu_' + id + i + '">単元</label><select id="bu_' + id + i + '" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u) + "</select></div>" +
+        h += '<div class="cbk"><div class="row2"><div><label for="bu_' + id + i + '">単元</label><select id="bu_' + id + i + '" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u, false, c.id) + "</select></div>" +
           '<div><label for="bp_' + id + i + '">単元の予定から入れる</label><select id="bp_' + id + i + '" data-act="bpick" data-id="' + esc(b.id) + '">' + itemOptions(b.u, c.id) + "</select></div></div>" +
           '<p class="hint">この単元：計画 ' + x.planned + "時間" + (al != null && al !== "" ? "／配当 " + al + "時間" : "") + "</p>" +
           '<label for="bt_' + id + i + '">授業内容（空にすると内容なしになります）</label><textarea id="bt_' + id + i + '" data-act="bt" data-id="' + esc(b.id) + '" placeholder="授業内容を入力">' + esc(b.t) + "</textarea>" +
@@ -363,7 +411,7 @@
           '<button class="btn sm danger" data-act="bdel" data-id="' + esc(b.id) + '">この内容を削除（以降が前に詰まる）</button></div></div>';
       });
       const au = A.ui.addUnit && A.st.units[A.ui.addUnit] ? A.ui.addUnit : (r.blocks.length ? r.blocks[r.blocks.length - 1].u : Object.keys(A.st.units)[0]);
-      h += '<div class="cadd"><h3>' + (r.blocks.length ? "授業内容を追加する" : "このコマに授業内容を入れる") + '</h3><div class="row2"><div><label for="cu">単元</label><select id="cu" data-act="cu">' + unitOptions(au) + "</select></div>" +
+      h += '<div class="cadd"><h3>' + (r.blocks.length ? "授業内容を追加する" : "このコマに授業内容を入れる") + '</h3><div class="row2"><div><label for="cu">単元</label><select id="cu" data-act="cu">' + unitOptions(au, false, c.id) + "</select></div>" +
         '<div><label for="cp">単元の予定から入れる</label><select id="cp" data-act="cp">' + itemOptions(au, c.id) + "</select></div></div>" +
         '<label for="ct">授業内容</label><textarea id="ct" placeholder="授業内容を入力"></textarea>' +
         '<div class="btns" style="margin-top:6px"><select id="ch" aria-label="時間" style="width:auto"><option value="1"' + (r.kind === "empty" && r.hrs === 1 || r.hrs === 1 ? " selected" : "") + '>1時間</option><option value="2"' + (r.hrs > 1 ? " selected" : "") + ">2時間</option></select>" +
@@ -375,5 +423,5 @@
     return h + '<div class="dlg-btns"><button class="btn on" data-act="close-cell">閉じる</button></div>';
   }
 
-  A.views = { today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };
+  A.views = { flow: viewFlow, flowItems, today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };
 })(window);

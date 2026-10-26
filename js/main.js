@@ -11,6 +11,7 @@
     ["rec", "off", "flags", "events", "units", "plans", "unitNotes"].forEach(k => { st[k] = st[k] || {}; });
     st.classes.forEach(c => { st.plans[c.id] = st.plans[c.id] || []; });
     Object.keys(st.units).forEach(u => { if (!Array.isArray(st.units[u].items)) st.units[u].items = []; });
+    J.migrateUnits(st);
     return st;
   }
   function clampAsof() {
@@ -43,6 +44,7 @@
     if (row) g.scrollTop += row.getBoundingClientRect().top - g.getBoundingClientRect().top - 150;
     g.scrollLeft = 0;
   }
+  function fillFlow() { $("flowbody").innerHTML = A.views.flow(); }
   function fillCell() {
     const html = A.ui.cell ? A.views.cell(A.ui.cell) : null;
     if (html == null) { if ($("celldlg").open) $("celldlg").close(); return; }
@@ -191,14 +193,15 @@
     A.ui.lastUnit[o.c.id] = u;
     return true;
   }
-  function newUnit(nm) {
+  function newUnit(nm, subj) {
     let n = 1; while (A.st.units["u" + n]) n++;
-    A.st.units["u" + n] = { name: nm, allot: {}, items: [] };
+    A.st.units["u" + n] = { name: nm, subj: subj || "", allot: {}, items: [] };
     return "u" + n;
   }
-  function askNewUnit() {
-    const nm = (window.prompt("新しい単元の名前を入れてください（例：羅生門）") || "").trim();
-    return nm ? newUnit(nm) : null;
+  function askNewUnit(cid) {
+    const c = A.st.classes.find(x => x.id === cid), sj = c ? J.subjectOf(c) : "";
+    const nm = (window.prompt("新しい単元の名前を入れてください（例：羅生門）" + (sj ? "\n科目は「" + sj + "」になります。" : "")) || "").trim();
+    return nm ? newUnit(nm, sj) : null;
   }
   function importFile(f) {
     if (!f) return;
@@ -257,6 +260,22 @@
       case "cell": A.ui.cell = k; A.ui.addUnit = null; fillCell(); if (!$("celldlg").open) $("celldlg").showModal(); break;
       case "close-cell": $("celldlg").close(); break;
       case "gord": A.ui.gridOrder = t.dataset.v; A.ui.gridReset = false; render(); break;
+      case "flow-open": if (t.dataset.u) A.ui.flow.u = t.dataset.u; A.ui.flow.cls = {}; fillFlow(); if (!$("flowdlg").open) $("flowdlg").showModal(); break;
+      case "flow-close": $("flowdlg").close(); break;
+      case "flow-all": A.st.classes.forEach(c => { const sj = A.st.units[A.ui.flow.u].subj; if ((!sj || sj === J.subjectOf(c)) && A.views.flowItems(A.ui.flow.u, c.id).length) A.ui.flow.cls[c.id] = true; }); fillFlow(); break;
+      case "flow-do": {
+        const u = A.ui.flow.u; let n = 0, cn = 0;
+        A.st.classes.forEach(c => {
+          if (!A.ui.flow.cls[c.id]) return;
+          const sj = A.st.units[u].subj; if (sj && sj !== J.subjectOf(c)) return;
+          const add = A.views.flowItems(u, c.id);
+          add.forEach(tx => A.st.plans[c.id].push({ id: newBlockId(c.id), u, t: tx, h: 1 }));
+          if (add.length) { cn++; n += add.length; A.ui.lastUnit[c.id] = u; }
+        });
+        $("flowdlg").close();
+        if (n) { commit(); toast(cn + "クラスに計 " + n + " コマ分を入れました"); }
+        break;
+      }
       case "gedit": A.ui.gridEdit = t.dataset.v === "e"; LS.set("jd.gridEdit", A.ui.gridEdit ? "1" : "0"); render(); break;
       case "gsub": A.ui.gridSubj = t.dataset.v; render(); break;
       case "gridtoday": { const g = document.querySelector(".gridwrap"); if (g) scrollGridToToday(g); break; }
@@ -272,8 +291,8 @@
       }
       case "cnewunit": {
         const nm = $("cnu").value.trim(); if (!nm) { toast("単元名を入れてください"); break; }
-        let n = 1; while (A.st.units["u" + n]) n++;
-        A.st.units["u" + n] = { name: nm, allot: {}, items: [] }; A.ui.addUnit = "u" + n; A.ui.cellRefresh = true; commit(); break;
+        const o = A.ui.cell && rowOf(A.ui.cell), id2 = newUnit(nm, o ? J.subjectOf(o.c) : "");
+        A.ui.addUnit = id2; A.ui.cellRefresh = true; commit(); break;
       }
       case "cls": A.ui.cls = id; A.ui.open = null; render(); break;
       case "goplan": A.ui.cls = id; A.ui.tab = "plan"; A.ui.open = null; render(); window.scrollTo(0, 0); break;
@@ -287,8 +306,7 @@
       }
       case "addunit": {
         const nm = $("newunit").value.trim(); if (!nm) { toast("単元名を入れてください"); break; }
-        let n = 1; while (A.st.units["u" + n]) n++;
-        A.st.units["u" + n] = { name: nm, allot: {}, items: [] }; commit(); break;
+        newUnit(nm, $("newunit_s").value); commit(); break;
       }
       case "settings": openSettings(); break;
       case "close-dlg": $("dlg").close(); break;
@@ -312,19 +330,21 @@
     if (t.id === "term") { loadTerm(v); return; }
     if (t.id === "importfile") { importFile(t.files[0]); $("dlg").close(); return; }
     if (!a) return;
+    if (a === "flow-u") { A.ui.flow.u = v; A.ui.flow.cls = {}; fillFlow(); return; }
+    if (a === "flow-c") { A.ui.flow.cls[t.dataset.c] = t.checked; fillFlow(); return; }
     if (a === "note") { setRecQuiet(t.dataset.key, { n: v.trim() }); }
     else if (a === "ft") { setRecQuiet(t.dataset.key, { t: v.trim() }); }
     else if (a === "bt" || a === "blk-t") { const b = blockById(t.dataset.id); if (b) { b.t = v.trim(); quiet(); } }
     else if (a === "blk-u") {
       const b = blockById(t.dataset.id); if (!b) return;
-      if (v === "__new") { const u = askNewUnit(); if (u) b.u = u; }
+      if (v === "__new") { const u = askNewUnit(planOf(b.id)); if (u) b.u = u; }
       else b.u = v;
       A.ui.lastUnit[planOf(b.id)] = b.u; A.ui.cellRefresh = true; commit();
     }
     else if (a === "bpick") { const b = blockById(t.dataset.id), u = b && A.st.units[b.u], it = u && u.items.filter(Boolean)[Number(v)]; if (b && it != null && v !== "") { b.t = it; A.ui.cellRefresh = true; commit(); } }
     else if (a === "gnew-u") {
       const cid = t.dataset.c; let u = v;
-      if (v === "__new") u = askNewUnit();
+      if (v === "__new") u = askNewUnit(cid);
       if (u) A.ui.lastUnit[cid] = u;
       commit();
     }
@@ -343,6 +363,7 @@
     else if (a === "cp") { const u = A.st.units[$("cu").value], it = u && u.items.filter(Boolean)[Number(v)]; if (it != null && v !== "") { $("ct").value = it; } }
     else if (a === "un-items") { const u = A.st.units[t.dataset.id]; if (u) { u.items = v.split("\n").map(x => x.trim()).filter(Boolean); commit(); } }
     else if (a === "blk-h") { const b = blockById(t.dataset.id); if (b) { b.h = Number(v) || 1; A.ui.cellRefresh = true; commit(); } }
+    else if (a === "un-subj") { const u = A.st.units[t.dataset.id]; if (u) { u.subj = v; commit(); } }
     else if (a === "un-name") { const u = A.st.units[t.dataset.id]; if (u && v.trim()) { u.name = v.trim(); commit(); } }
     else if (a === "allot") { const u = A.st.units[t.dataset.u]; if (v === "") delete u.allot[t.dataset.c]; else u.allot[t.dataset.c] = Math.max(0, Number(v) || 0); commit(); }
     else if (a === "un") { A.st.unitNotes[t.dataset.id] = v; commit(); }
