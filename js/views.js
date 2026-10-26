@@ -12,6 +12,7 @@
   const plain = s => String(s).replace(/\s*\/\s*/g, " / ");
   const clip = (s, n) => { s = plain(s); return s.length > n ? s.slice(0, n) + "…" : s; };
   const cur = () => A.st.classes.find(c => c.id === A.ui.cls) || A.st.classes[0];
+  const perTxt = r => (r.periods && r.periods.length ? r.periods.join("・") + "時間目" : "");
   const hrsTxt = n => n + "時間";
   const parts = n => { const i = n.indexOf(" "); return i < 0 ? [n, ""] : [n.slice(0, i), n.slice(i + 1)]; };
   const subj = n => /現代/.test(n) ? "gen" : /言語|古/.test(n) ? "lang" : "etc";
@@ -86,7 +87,7 @@
     const ev = r.ev && r.kind !== "off" ? '<span class="ev">行事：' + esc(clip(r.ev, 60)) + "</span>" : "";
     const open = A.ui.open === r.key;
     const cn = withClass ? parts(cname(r.key.split("|")[0])) : null;
-    const head = '<div class="sd"><b>' + md(r.date) + "</b><span class=\"dow\">" + dw(r.date) + "</span>" + (cn ? '<small class="k-' + subj(cn[1]) + '">' + esc(cn[0]) + " " + esc(cn[1].replace("の国語", "")) + "</small>" : "") + "</div>" +
+    const head = '<div class="sd"><b>' + md(r.date) + "</b><span class=\"dow\">" + dw(r.date) + "</span>" + (perTxt(r) ? '<span class="per">' + perTxt(r) + "</span>" : "") + (cn ? '<small class="k-' + subj(cn[1]) + '">' + esc(cn[0]) + " " + esc(cn[1].replace("の国語", "")) + "</small>" : "") + "</div>" +
       '<div class="st">' + chips + "<b>" + esc(rowTitle(r)) + "</b>" + meta + ev + '</div><div class="stt">' + pillFor(r) + (remTxt ? '<span class="rem">' + remTxt + "</span>" : "") + "</div>";
     return '<div class="slot' + (k === "off" ? " off" : "") + (past ? " past" : "") + (today ? " today" : "") + (k === "cancel" ? " cancelled" : "") + '">' +
       '<button class="srow" data-act="open" data-key="' + esc(r.key) + '" aria-expanded="' + open + '">' + head + "</button>" + (open ? editor(r) : "") + "</div>";
@@ -269,7 +270,7 @@
     const k = r.kind, sk = "k-" + subj(c.name), key = esc(r.key), s = (r.rec && r.rec.s) || "plan";
     const waiting = r.date < asof && k === "plan";
     const St = (v, t) => '<button class="mini' + (s === v ? " on" : "") + '" data-act="st" data-key="' + key + '" data-v="' + v + '" aria-pressed="' + (s === v) + '">' + t + "</button>";
-    let h = '<div class="gtop">' + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + (waiting ? '<span class="gk wait">記録待ち</span>' : "") +
+    let h = '<div class="gtop"><span class="per">' + perTxt(r) + "</span>" + (waiting ? '<span class="gk wait">記録待ち</span>' : "") +
       (r.ev ? '<span class="gk ev" title="' + esc(r.ev) + '">行事</span>' : "") +
       '<button class="mini more" data-act="cell" data-key="' + key + '" title="順番の入れ替え・削除など">詳細</button></div>';
     if (r.ev) h += '<div class="gev">行事：' + esc(clip(r.ev, 40)) + "</div>";
@@ -297,7 +298,7 @@
     if (k === "off") {
       const closed = /休校|休講/.test(r.off);
       return '<td class="gc has off ' + sk + (closed ? " closed" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(r.off) + '">' +
-        '<div class="gtop"><span class="gk off">' + (closed ? "休校" : "授業なし") + "</span>" + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + "</div>" +
+        '<div class="gtop"><span class="per">' + perTxt(r) + '</span><span class="gk off">' + (closed ? "休校" : "授業なし") + "</span>" + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + "</div>" +
         '<div class="gt">' + esc(clip(r.off, 40)) + '</div></td>';
     }
     if (A.ui.gridEdit) return gridCellEdit(r, c, asof);
@@ -316,7 +317,7 @@
     const evTag = r.ev ? '<span class="gk ev" title="' + esc(r.ev) + '">行事</span>' : "";
     const full = plain(text) + (memo ? "／" + memo : "") + (r.ev ? "／行事：" + r.ev : "");
     return '<td class="gc has ' + sk + " s-" + k + (blank ? " s-blank" : "") + (waiting ? " s-wait" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(full) + '">' +
-      '<div class="gtop">' + (unitChip ? '<span class="gu">' + esc(unitChip) + "</span>" : "") + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + evTag + mark + "</div>" +
+      '<div class="gtop"><span class="per">' + perTxt(r) + "</span>" + (unitChip ? '<span class="gu">' + esc(unitChip) + "</span>" : "") + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + evTag + mark + "</div>" +
       '<div class="gt">' + (fl ? '<span class="flagchip">' + esc(fl) + "</span> " : "") + esc(plain(text)) + "</div>" + (memo ? '<div class="gm">' + esc(memo) + "</div>" : "") + "</td>";
   }
   function viewGrid() {
@@ -384,7 +385,7 @@
     const r = c && J.project(A.st, c).rows.find(x => x.key === key);
     if (!r) return null;
     const k = esc(r.key), s = (r.rec && r.rec.s) || "plan", id = sid(r.key);
-    let h = "<h2>" + esc(c.name) + "　" + md(r.date) + "（" + dw(r.date) + "）" + (r.hrs > 1 ? "　" + r.hrs + "時間" : "") + "</h2>" +
+    let h = "<h2>" + esc(c.name) + "　" + md(r.date) + "（" + dw(r.date) + "）　" + perTxt(r) + "</h2>" +
       (r.ev ? '<p class="note" style="margin:0 0 6px">行事：' + esc(r.ev) + "</p>" : "") +
       '<p class="cell-now">' + pillFor(r) + " <b>" + esc(rowTitle(r)) + "</b></p>";
     if (r.kind === "off") {

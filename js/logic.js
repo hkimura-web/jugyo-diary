@@ -33,10 +33,10 @@
     const out = [];
     for (let d = st.term.start; d <= st.term.end; d = addDays(d, 1)) {
       const w = pd(d).getDay();
-      const hrs = cls.tt.filter(t => t[0] === w).length;
+      const pers = cls.tt.filter(t => t[0] === w).map(t => t[1]).sort((a, b) => a - b), hrs = pers.length;
       if (!hrs) continue;
       const key = cls.id + "|" + d;
-      out.push({ key, date: d, hrs, off: (st.off && st.off[key]) || null, ev: (st.events && st.events[d]) || "" });
+      out.push({ key, date: d, hrs, periods: pers, off: (st.off && st.off[key]) || null, ev: (st.events && st.events[d]) || "" });
     }
     return out;
   }
