@@ -194,6 +194,18 @@
     return h + '<div class="dlg-btns" style="justify-content:space-between"><button class="btn" data-act="flow-all">全クラス選ぶ</button><span class="btns"><button class="btn" data-act="flow-close">閉じる</button><button class="btn on" data-act="flow-do"' + (n ? "" : " disabled") + ">選んだクラスに入れる</button></span></div>";
   }
 
+
+  function viewUrls() {
+    let h = "<h2>Google Classroomのリンク</h2>" +
+      '<p class="note" style="margin:0 0 8px">クラスごとにリンクを入れると、一覧のクラス名（S1-1現代など）を押して、新しいタブでClassroomを開けます。Classroomの画面で、そのクラスを開いたときのアドレス（https://classroom.google.com/c/…）をコピーして貼ってください。</p>' +
+      '<p class="note" style="margin:0 0 8px;color:var(--cancel)">注意：「招待リンク」や「クラスコード付きのリンク」は貼らないでください。このアプリのデータは公開されるリポジトリに保存されるため、誰でも見られる場所に置かれます。</p>';
+    A.st.classes.forEach(c => {
+      h += '<label class="k-' + subj(c.name) + '" for="url_' + esc(c.id) + '">' + esc(c.name) + "</label>" +
+        '<input type="url" id="url_' + esc(c.id) + '" data-act="cls-url" data-c="' + esc(c.id) + '" value="' + esc(c.url || "") + '" placeholder="https://classroom.google.com/c/…" autocomplete="off">';
+    });
+    return h + '<p class="small" id="url_msg" role="status"></p><div class="dlg-btns"><button class="btn on" data-act="url-close">閉じる</button></div>';
+  }
+
   /* ---------- 単元別 ---------- */
   function subjectList() { const o = []; A.st.classes.forEach(c => { const x = J.subjectOf(c); if (x && o.indexOf(x) < 0) o.push(x); }); return o; }
   function viewUnit() {
@@ -334,10 +346,10 @@
     let h = '<div class="gridbar">' + seg("gord", A.ui.gridOrder, [["class", "クラス順"], ["subject", "科目ごと"]]) +
       seg("gsub", A.ui.gridSubj, [["all", "すべて"], ["gen", "現代の国語"], ["lang", "言語文化"]]) +
       seg("gedit", A.ui.gridEdit ? "e" : "v", [["e", "編集"], ["v", "見るだけ"]]) +
-      '<button class="btn" data-act="gridtoday">今日の位置へ</button><button class="btn" data-act="flow-open" title="単元別タブで作った予定を、各クラスの計画に順に入れます">単元の予定を計画に入れる</button><span class="glegend"><span><i class="lg-gen"></i>現代の国語</span><span><i class="lg-lang"></i>言語文化</span><span><i style="background:var(--today-soft);border-color:var(--today)"></i>今日</span></span><span class="note">' + (A.ui.gridEdit ? "コマの中で単元・内容・記録を直接直せます。「詳細」で順番の入れ替えなど。" : "コマをタップすると、記録・休講・内容の書き換えができます。") + '</span></div>';
+      '<button class="btn" data-act="gridtoday">今日の位置へ</button><button class="btn" data-act="url-open" title="各クラスのGoogle Classroomのリンクを設定します">Classroomリンク</button><button class="btn" data-act="flow-open" title="単元別タブで作った予定を、各クラスの計画に順に入れます">単元の予定を計画に入れる</button><span class="glegend"><span><i class="lg-gen"></i>現代の国語</span><span><i class="lg-lang"></i>言語文化</span><span><i style="background:var(--today-soft);border-color:var(--today)"></i>今日</span></span><span class="note">' + (A.ui.gridEdit ? "コマの中で単元・内容・記録を直接直せます。「詳細」で順番の入れ替えなど。" : "コマをタップすると、記録・休講・内容の書き換えができます。") + '</span></div>';
     h += '<div class="gridwrap" tabindex="-1"><table class="gridt' + (A.ui.gridEdit ? " edit" : "") + '" style="--n:' + cls.length + '"><colgroup><col class="col-d"><col class="col-e">' + cls.map(() => '<col class="col-c">').join("") + "</colgroup><thead><tr>" +
       '<th class="c-date" rowspan="2">日</th><th class="c-ev" rowspan="2">行事</th>' +
-      cls.map(c => '<th class="gh1 hs-' + subj(c.name) + '">' + esc(c.short) + "<small>" + esc(c.tt.map(t => J.DOW[t[0]] + t[1]).join("・")) + "</small></th>").join("") + "</tr><tr>" +
+      cls.map(c => '<th class="gh1 hs-' + subj(c.name) + '">' + (c.url ? '<a class="gcl" href="' + esc(c.url) + '" target="_blank" rel="noopener noreferrer" title="Google Classroomを新しいタブで開く">' + esc(c.short) + ' <span aria-hidden="true">↗</span></a>' : '<button class="gcl none" data-act="url-open" title="Google Classroomのリンクを設定する">' + esc(c.short) + ' <span aria-hidden="true">＋</span></button>') + "<small>" + esc(c.tt.map(t => J.DOW[t[0]] + t[1]).join("・")) + "</small></th>").join("") + "</tr><tr>" +
       cls.map(c => '<th class="gh2 hs-' + subj(c.name) + '">残り <b class="num">' + stats[c.id].remain + "</b> 時間</th>").join("") + "</tr></thead><tbody>";
     const lastUnit = {};
     for (let d = st.term.start; d <= st.term.end; d = addDays(d, 1)) {
@@ -424,5 +436,5 @@
     return h + '<div class="dlg-btns"><button class="btn on" data-act="close-cell">閉じる</button></div>';
   }
 
-  A.views = { flow: viewFlow, flowItems, today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };
+  A.views = { urls: viewUrls, flow: viewFlow, flowItems, today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };
 })(window);

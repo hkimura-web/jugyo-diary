@@ -260,6 +260,8 @@
       case "cell": A.ui.cell = k; A.ui.addUnit = null; fillCell(); if (!$("celldlg").open) $("celldlg").showModal(); break;
       case "close-cell": $("celldlg").close(); break;
       case "gord": A.ui.gridOrder = t.dataset.v; A.ui.gridReset = false; render(); break;
+      case "url-open": $("urlbody").innerHTML = A.views.urls(); if (!$("urldlg").open) $("urldlg").showModal(); break;
+      case "url-close": $("urldlg").close(); break;
       case "flow-open": if (t.dataset.u) A.ui.flow.u = t.dataset.u; A.ui.flow.cls = {}; fillFlow(); if (!$("flowdlg").open) $("flowdlg").showModal(); break;
       case "flow-close": $("flowdlg").close(); break;
       case "flow-all": A.st.classes.forEach(c => { const sj = A.st.units[A.ui.flow.u].subj; if ((!sj || sj === J.subjectOf(c)) && A.views.flowItems(A.ui.flow.u, c.id).length) A.ui.flow.cls[c.id] = true; }); fillFlow(); break;
@@ -330,6 +332,15 @@
     if (t.id === "term") { loadTerm(v); return; }
     if (t.id === "importfile") { importFile(t.files[0]); $("dlg").close(); return; }
     if (!a) return;
+    if (a === "cls-url") {
+      const c = A.st.classes.find(x => x.id === t.dataset.c), u = v.trim(), m = $("url_msg");
+      if (!c) return;
+      if (u && !/^https:\/\//i.test(u)) { m.textContent = "https:// から始まるアドレスを入れてください。"; return; }
+      if (/[?&](cjc|invite)=|classroom\.google\.com\/(?:c\/[^/]+\/)?(?:invite|join)/i.test(u)) { m.textContent = "招待リンクのようです。公開される場所に保存されるため、クラスを開いたときの通常のアドレスを入れてください。"; return; }
+      m.textContent = "";
+      if (u) c.url = u; else delete c.url;
+      commit(); return;
+    }
     if (a === "flow-u") { A.ui.flow.u = v; A.ui.flow.cls = {}; fillFlow(); return; }
     if (a === "flow-c") { A.ui.flow.cls[t.dataset.c] = t.checked; fillFlow(); return; }
     if (a === "note") { setRecQuiet(t.dataset.key, { n: v.trim() }); }
