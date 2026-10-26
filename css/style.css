@@ -360,3 +360,4 @@ dialog#celldlg{max-height:calc(100vh - 24px);overflow:auto}
 .gridt col.col-c{width:auto}
 .gridt .gsel,.gridt .gta,.gridt .gin{min-width:0}
 .hero h1{letter-spacing:.01em}
+.gridt thead th.gh2.hs-gen,.gridt thead th.gh2.hs-lang,.gridt thead th.gh2.hs-etc{background:var(--surface)!important}
