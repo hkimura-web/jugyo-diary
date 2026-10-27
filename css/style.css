@@ -375,3 +375,10 @@ dialog#urldlg{max-width:min(620px,calc(100vw - 24px));max-height:calc(100vh - 24
 .gcl:hover{text-decoration-thickness:2px}
 .gcl.none{text-decoration:none;border-bottom:1px dashed currentColor}
 .gcl span{font-size:11px;opacity:.75}
+.gmat{margin-top:3px;font-size:11px;line-height:1.5}
+.gm1{display:flex;flex-wrap:wrap;gap:0 6px;align-items:baseline}
+.gm1 b{font-weight:700}
+a.ml{color:var(--accent);text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+a.ml:hover{text-decoration-thickness:2px}
+.matbox{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0;background:var(--bg2)}
+.matlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2px 10px}

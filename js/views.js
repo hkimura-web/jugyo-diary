@@ -93,6 +93,27 @@
       '<button class="srow" data-act="open" data-key="' + esc(r.key) + '" aria-expanded="' + open + '">' + head + "</button>" + (open ? editor(r) : "") + "</div>";
   }
 
+
+  /* 単元の教材（最大4つ）と、教科書本文・指導書・プリント1・プリント2へのリンク */
+  const MATF = [["t", "教科書本文"], ["g", "指導書"], ["p1", "プリント1"], ["p2", "プリント2"]];
+  function matHtml(u) {
+    const m = ((A.st.units[u] || {}).mats || []).filter(x => x && (x.n || MATF.some(f => x[f[0]])));
+    if (!m.length) return "";
+    return '<div class="gmat">' + m.map(x => '<div class="gm1">' + (x.n ? "<b>" + esc(x.n) + "</b>" : "") +
+      MATF.filter(f => x[f[0]]).map(f => ' <a class="ml" href="' + esc(x[f[0]]) + '" target="_blank" rel="noopener noreferrer">' + f[1] + "</a>").join("") + "</div>").join("") + "</div>";
+  }
+  function matForm(u) {
+    const un = A.st.units[u], m = un.mats || [];
+    let h = '<div class="csec" style="margin-top:14px">教材とリンク（教科書の教材を最大4つ。リンクは一覧からも開けます）</div>';
+    for (let i = 0; i < 4; i++) {
+      const x = m[i] || {};
+      h += '<div class="matbox"><label class="small" for="mn_' + u + i + '">教材' + (i + 1) + "の名前</label>" +
+        '<input type="text" id="mn_' + u + i + '" data-act="mat" data-u="' + u + '" data-i="' + i + '" data-f="n" value="' + esc(x.n || "") + '" placeholder="' + (i === 0 ? "例：羅生門" : "") + '">' +
+        '<div class="matlinks">' + MATF.map(f => '<div><label class="small" for="m_' + u + i + f[0] + '">' + f[1] + '</label><input type="url" id="m_' + u + i + f[0] + '" data-act="mat" data-u="' + u + '" data-i="' + i + '" data-f="' + f[0] + '" value="' + esc(x[f[0]] || "") + '" placeholder="https://…" autocomplete="off"></div>').join("") + "</div></div>";
+    }
+    return h;
+  }
+
   /* ---------- 今日 ---------- */
   function viewToday() {
     const st = A.st, asof = A.ui.asof;
@@ -230,7 +251,7 @@
         else if (al != null && al !== "") { const diff = x.slotsU - al; d = diff === 0 ? '<span class="pill p-ok">配当どおり</span>' : '<span class="pill p-warn">' + (diff > 0 ? "+" : "") + diff + "</span>"; }
         b += "<tr><td>" + esc(c.name) + '</td><td><input class="num-in" type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(c.name) + 'の配当" data-act="allot" data-u="' + u + '" data-c="' + c.id + '" value="' + (al == null ? "" : al) + '"></td><td>' + x.planned + "</td><td>" + x.actual + "</td><td>" + (x.start ? md(x.start) + "〜" + md(x.end) : "−") + "</td><td>" + d + "</td></tr>";
       });
-      b += '</tbody></table></div><div style="margin-top:12px"><button class="btn" data-act="flow-open" data-u="' + u + '">この単元の予定を各クラスの計画に入れる</button></div><label class="small unitnote" for="ui_' + u + '">この単元の授業内容の予定（1行＝1コマ。一覧の画面で選んで使えます）</label><textarea id="ui_' + u + '" data-act="un-items" data-id="' + u + '" style="min-height:110px" placeholder="例：\n導入・語句の確認\n本文の読解①\n本文の読解②\nまとめ・小テスト">' + esc((un.items || []).join("\n")) + '</textarea><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
+      b += '</tbody></table></div><div style="margin-top:12px"><button class="btn" data-act="flow-open" data-u="' + u + '">この単元の予定を各クラスの計画に入れる</button></div>' + matForm(u) + '<label class="small unitnote" for="ui_' + u + '">この単元の授業内容の予定（1行＝1コマ。一覧の画面で選んで使えます）</label><textarea id="ui_' + u + '" data-act="un-items" data-id="' + u + '" style="min-height:110px" placeholder="例：\n導入・語句の確認\n本文の読解①\n本文の読解②\nまとめ・小テスト">' + esc((un.items || []).join("\n")) + '</textarea><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
       h += panel("p-soon", esc(un.name), un.subj || "共通", b);
     });
     return h + panel("p-ev", "単元を追加", "", '<div class="addrow" style="grid-template-columns:160px 1fr auto"><select id="newunit_s" aria-label="科目">' + ["", ...subjectList()].map(x => '<option value="' + esc(x) + '">' + esc(x || "共通") + "</option>").join("") + '</select><input type="text" id="newunit" aria-label="単元名" placeholder="単元名（例：羅生門）"><button class="btn on" data-act="addunit">追加</button></div>');
@@ -294,13 +315,13 @@
       r.blocks.forEach(b => {
         h += '<div class="gblk' + (r.cont ? " cont" : "") + '"><select class="gsel" aria-label="単元" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u, true, c.id) + "</select>" +
           '<select class="gsel pick" aria-label="単元の予定から入れる" data-act="bpick" data-id="' + esc(b.id) + '">' + itemOptions(b.u, c.id) + "</select>" +
-          '<textarea class="gta" aria-label="授業内容" placeholder="授業内容" data-act="bt" data-id="' + esc(b.id) + '">' + esc(b.t) + "</textarea></div>";
+          '<textarea class="gta" aria-label="授業内容" placeholder="授業内容" data-act="bt" data-id="' + esc(b.id) + '">' + esc(b.t) + "</textarea>" + matHtml(b.u) + "</div>";
       });
     } else {
       const u = defaultUnit(c);
       h += '<div class="gblk new"><select class="gsel gnew-u" aria-label="単元" data-act="gnew-u" data-c="' + esc(c.id) + '">' + unitOptions(u, true, c.id) + "</select>" +
         '<select class="gsel pick" aria-label="単元の予定から入れる" data-act="gnew-pick" data-key="' + key + '">' + itemOptions(u, c.id) + "</select>" +
-        '<textarea class="gta" aria-label="授業内容" placeholder="授業内容を入力（計画なし）" data-act="gnew-t" data-key="' + key + '"></textarea></div>';
+        '<textarea class="gta" aria-label="授業内容" placeholder="授業内容を入力（計画なし）" data-act="gnew-t" data-key="' + key + '"></textarea>' + matHtml(u) + "</div>";
     }
     h += '<textarea class="gta gmemo" aria-label="実施しての記録" placeholder="記録（どこまで進んだか）" data-act="note" data-key="' + key + '">' + esc((r.rec && r.rec.n) || "") + "</textarea>";
     return '<td class="gc has edit ' + sk + " s-" + k + (waiting ? " s-wait" : "") + '">' + h + "</td>";
@@ -330,7 +351,7 @@
     const full = plain(text) + (memo ? "／" + memo : "") + (r.ev ? "／行事：" + r.ev : "");
     return '<td class="gc has ' + sk + " s-" + k + (blank ? " s-blank" : "") + (waiting ? " s-wait" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(full) + '">' +
       '<div class="gtop"><span class="per">' + perTxt(r) + "</span>" + (unitChip ? '<span class="gu">' + esc(unitChip) + "</span>" : "") + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + evTag + mark + "</div>" +
-      '<div class="gt">' + (fl ? '<span class="flagchip">' + esc(fl) + "</span> " : "") + esc(plain(text)) + "</div>" + (memo ? '<div class="gm">' + esc(memo) + "</div>" : "") + "</td>";
+      '<div class="gt">' + (fl ? '<span class="flagchip">' + esc(fl) + "</span> " : "") + esc(plain(text)) + "</div>" + (memo ? '<div class="gm">' + esc(memo) + "</div>" : "") + r.blocks.map(b => b.u).filter((x, i, ar) => ar.indexOf(x) === i).map(matHtml).join("") + "</td>";
   }
   function viewGrid() {
     const st = A.st, asof = A.ui.asof;
@@ -418,7 +439,7 @@
         h += '<div class="cbk"><div class="row2"><div><label for="bu_' + id + i + '">単元</label><select id="bu_' + id + i + '" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u, false, c.id) + "</select></div>" +
           '<div><label for="bp_' + id + i + '">単元の予定から入れる</label><select id="bp_' + id + i + '" data-act="bpick" data-id="' + esc(b.id) + '">' + itemOptions(b.u, c.id) + "</select></div></div>" +
           '<p class="hint">この単元：計画 ' + x.planned + "時間" + (al != null && al !== "" ? "／配当 " + al + "時間" : "") + "</p>" +
-          '<label for="bt_' + id + i + '">授業内容（空にすると内容なしになります）</label><textarea id="bt_' + id + i + '" data-act="bt" data-id="' + esc(b.id) + '" placeholder="授業内容を入力">' + esc(b.t) + "</textarea>" +
+          '<label for="bt_' + id + i + '">授業内容（空にすると内容なしになります）</label><textarea id="bt_' + id + i + '" data-act="bt" data-id="' + esc(b.id) + '" placeholder="授業内容を入力">' + esc(b.t) + "</textarea>" + matHtml(b.u) +
           '<div class="btns" style="margin-top:6px"><select aria-label="時間" data-act="blk-h" data-id="' + esc(b.id) + '" style="width:auto"><option value="1"' + (hrsOf(b) === 1 ? " selected" : "") + '>1時間</option><option value="2"' + (hrsOf(b) === 2 ? " selected" : "") + ">2時間</option></select>" +
           '<button class="btn sm" data-act="bup" data-id="' + esc(b.id) + '">▲ 前のコマへ</button><button class="btn sm" data-act="bdn" data-id="' + esc(b.id) + '">▼ 後のコマへ</button>' +
           '<button class="btn sm danger" data-act="bdel" data-id="' + esc(b.id) + '">この内容を削除（以降が前に詰まる）</button></div></div>';

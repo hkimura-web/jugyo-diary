@@ -252,6 +252,7 @@
 
   /* ---------- イベント ---------- */
   document.addEventListener("click", e => {
+    if (e.target.closest("a.ml, a.gcl")) return;
     const t = e.target.closest("[data-tab],[data-act]"); if (!t) return;
     if (t.dataset.tab) { A.ui.tab = t.dataset.tab; A.ui.open = null; render(); return; }
     const a = t.dataset.act, k = t.dataset.key, id = t.dataset.id;
@@ -340,6 +341,17 @@
       m.textContent = "";
       if (u) c.url = u; else delete c.url;
       commit(); return;
+    }
+    if (a === "mat") {
+      const u = A.st.units[t.dataset.u]; if (!u) return;
+      const f = t.dataset.f, i = Number(t.dataset.i), val = v.trim();
+      if (f !== "n" && val && !/^https?:\/\//i.test(val)) { toast("https:// から始まるアドレスを入れてください"); return; }
+      const m = u.mats = u.mats || [];
+      while (m.length < 4) m.push({});
+      if (val) m[i][f] = val; else delete m[i][f];
+      while (m.length && !Object.keys(m[m.length - 1]).length) m.pop();
+      if (!m.length) delete u.mats;
+      quiet(); return;
     }
     if (a === "flow-u") { A.ui.flow.u = v; A.ui.flow.cls = {}; fillFlow(); return; }
     if (a === "flow-c") { A.ui.flow.cls[t.dataset.c] = t.checked; fillFlow(); return; }
