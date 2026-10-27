@@ -385,3 +385,12 @@ a.ml:hover{text-decoration-thickness:2px}
 .matbox label{display:block;margin:6px 0 2px}
 .matbox input{width:100%;box-sizing:border-box}
 .matlinks>div{min-width:0}
+dialog#carrydlg{max-width:min(860px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto}
+.carrybox{border:1px solid var(--tile-line,var(--line));background:var(--tile-bg,var(--bg2));border-radius:10px;padding:8px 10px;margin:8px 0}
+.carryh{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.carryh select{width:auto;min-width:200px}
+.carrychk{display:flex;gap:6px;align-items:center;margin:0;font-size:14px;color:var(--ink)}
+.carrychk input{width:auto;margin:0}
+.carrytbl td,.carrytbl th{padding:4px 8px}
+.prevbox{margin-top:10px;padding:8px 12px;border-left:4px solid var(--sand-ink,var(--line));background:var(--sand-soft,var(--bg2));border-radius:6px;font-size:13px}
+.prevbox ul{margin:4px 0 0;padding-left:18px}

@@ -44,6 +44,55 @@
     if (row) g.scrollTop += row.getBoundingClientRect().top - g.getBoundingClientRect().top - 150;
     g.scrollLeft = 0;
   }
+  function fillCarry() { $("carrybody").innerHTML = A.views.carry(); }
+  async function fetchTermData(t) {
+    const s = S.getSettings(); let text = null;
+    if (s.token && s.owner && s.repo) { try { text = (await S.remoteGet(s, "data/" + t.file)).text; } catch (e) { text = null; } }
+    if (text == null) { const res = await fetch("data/" + t.file + "?t=" + Date.now(), { cache: "no-store" }); if (!res.ok) throw new Error(res.status); text = await res.text(); }
+    return normalize(JSON.parse(text));
+  }
+  function applyCarry() {
+    const C = A.ui.carry, S0 = C.data, st = A.st; let nCls = 0, nBlk = 0;
+    const targets = st.classes.filter(c => C.on[c.id] && S0.classes.some(x => x.id === C.map[c.id]));
+    const replacing = targets.filter(c => (st.plans[c.id] || []).length);
+    if (replacing.length && !window.confirm("次のクラスの今の計画は、置き換わります。よろしいですか？\n" + replacing.map(c => "・" + c.name).join("\n"))) return;
+    const uMap = {};
+    function targetUnit(su) {
+      if (uMap[su]) return uMap[su];
+      const src = S0.units[su];
+      let tu = Object.keys(st.units).find(k => st.units[k].name === src.name && (st.units[k].subj || "") === (src.subj || ""));
+      if (!tu) { tu = newUnit(src.name, src.subj || ""); }
+      const u = st.units[tu];
+      if (!(u.items || []).length && (src.items || []).length) u.items = src.items.slice();
+      if (!(u.mats || []).length && (src.mats || []).length) u.mats = J.clone(src.mats);
+      uMap[su] = tu; return tu;
+    }
+    targets.forEach(c => {
+      const sc = S0.classes.find(x => x.id === C.map[c.id]), rows = J.project(S0, sc).rows, out = [];
+      (S0.plans[sc.id] || []).forEach(b => {
+        const sel = C.sel[c.id + "|" + b.u] || { on: true, mode: "act" };
+        if (!sel.on || !S0.units[b.u]) return;
+        const tu = targetUnit(b.u);
+        out.push({ id: newBlockId(c.id) + out.length, u: tu, t: b.t, h: b.h || 1 });
+        if (sel.mode !== "plan") {
+          const n = rows.filter(r => (r.kind === "done" || r.kind === "part") && r.blocks.some(x => x.id === b.id)).length;
+          for (let i = 1; i < n; i++) out.push({ id: newBlockId(c.id) + out.length, u: tu, t: "（続き）" + b.t, h: b.h || 1 });
+        }
+      });
+      st.plans[c.id] = out; nCls++; nBlk += out.length;
+      Object.keys(uMap).forEach(su => {
+        const tu = st.units[uMap[su]], x = J.unitStats(S0, sc, su);
+        if (!(S0.plans[sc.id] || []).some(b => b.u === su)) return;
+        const al = (S0.units[su].allot || {})[sc.id]; if (al != null && tu.allot[c.id] == null) tu.allot[c.id] = al;
+        tu.prev = tu.prev || { term: S0.term.name, note: "", stats: {} };
+        tu.prev.term = S0.term.name; tu.prev.stats = tu.prev.stats || {};
+        tu.prev.stats[c.id] = [x.planned, x.actual];
+        tu.prev.note = (S0.unitNotes || {})[su] || tu.prev.note || "";
+      });
+    });
+    $("carrydlg").close();
+    if (nCls) { commit(); toast(nCls + "クラスに " + nBlk + " コマ分の計画を引き継ぎました"); }
+  }
   function fillFlow() { $("flowbody").innerHTML = A.views.flow(); }
   function fillCell() {
     const html = A.ui.cell ? A.views.cell(A.ui.cell) : null;
@@ -76,6 +125,7 @@
   /* ---------- 読み込み ---------- */
   async function loadTerm(id) {
     term = terms.find(t => t.id === id) || terms[terms.length - 1];
+    A.terms = terms; A.termId = term.id;
     LS.set("jd.term", term.id);
     $("term").value = term.id;
     const s = S.getSettings();
@@ -263,6 +313,10 @@
       case "gord": A.ui.gridOrder = t.dataset.v; A.ui.gridReset = false; render(); break;
       case "url-open": $("urlbody").innerHTML = A.views.urls(); if (!$("urldlg").open) $("urldlg").showModal(); break;
       case "url-close": $("urldlg").close(); break;
+      case "carry-open": A.ui.carry = { src: "", data: null, map: {}, on: {}, sel: {} }; fillCarry(); if (!$("carrydlg").open) $("carrydlg").showModal(); break;
+      case "carry-close": $("carrydlg").close(); break;
+      case "carry-mode": { const k2 = t.dataset.k, cur2 = A.ui.carry.sel[k2] || { on: true, mode: "act" }; A.ui.carry.sel[k2] = Object.assign({}, cur2, { mode: t.dataset.v }); fillCarry(); break; }
+      case "carry-do": applyCarry(); break;
       case "flow-open": if (t.dataset.u) A.ui.flow.u = t.dataset.u; A.ui.flow.cls = {}; fillFlow(); if (!$("flowdlg").open) $("flowdlg").showModal(); break;
       case "flow-close": $("flowdlg").close(); break;
       case "flow-all": A.st.classes.forEach(c => { const sj = A.st.units[A.ui.flow.u].subj; if ((!sj || sj === J.subjectOf(c)) && A.views.flowItems(A.ui.flow.u, c.id).length) A.ui.flow.cls[c.id] = true; }); fillFlow(); break;
@@ -353,6 +407,17 @@
       if (!m.length) delete u.mats;
       quiet(); return;
     }
+    if (a === "carry-src") {
+      const C = A.ui.carry; C.src = v; C.data = null; C.err = ""; C.map = {}; C.on = {}; C.sel = {};
+      if (!v) { fillCarry(); return; }
+      C.loading = true; fillCarry();
+      fetchTermData(terms.find(x => x.id === v)).then(d => { C.data = d; const o = A.views.carryDefaults(d); C.map = o.map; C.on = o.on; C.loading = false; fillCarry(); })
+        .catch(() => { C.loading = false; C.err = "その学期のデータを読み込めませんでした。"; fillCarry(); });
+      return;
+    }
+    if (a === "carry-map") { const C = A.ui.carry; C.map[t.dataset.c] = v; C.on[t.dataset.c] = !!v && !(A.st.plans[t.dataset.c] || []).length; fillCarry(); return; }
+    if (a === "carry-on") { A.ui.carry.on[t.dataset.c] = t.checked; fillCarry(); return; }
+    if (a === "carry-u") { const k2 = t.dataset.k, cur2 = A.ui.carry.sel[k2] || { on: true, mode: "act" }; A.ui.carry.sel[k2] = Object.assign({}, cur2, { on: t.checked }); return; }
     if (a === "flow-u") { A.ui.flow.u = v; A.ui.flow.cls = {}; fillFlow(); return; }
     if (a === "flow-c") { A.ui.flow.cls[t.dataset.c] = t.checked; fillFlow(); return; }
     if (a === "note") { setRecQuiet(t.dataset.key, { n: v.trim() }); }

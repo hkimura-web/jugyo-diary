@@ -2,7 +2,7 @@
 (function (root) {
   "use strict";
   const J = root.JD, { esc, md, dw, addDays, hrsOf } = J;
-  const A = root.A = { st: null, ui: { tab: "today", cls: null, open: null, planAll: false, asof: J.ds(new Date()), gridOrder: "class", gridSubj: "all", cell: null, gridEdit: true, lastUnit: {}, flow: { u: null, cls: {} } } };
+  const A = root.A = { st: null, ui: { tab: "today", cls: null, open: null, planAll: false, asof: J.ds(new Date()), gridOrder: "class", gridSubj: "all", cell: null, gridEdit: true, lastUnit: {}, flow: { u: null, cls: {} }, carry: null } };
 
   const LABEL = { plan: "予定", done: "実施", part: "途中まで", cancel: "休講", free: "別の内容", off: "授業なし", empty: "計画なし" };
   const PILL = { plan: "p-plan", done: "p-done", part: "p-part", cancel: "p-cancel", free: "p-free", off: "p-off", empty: "p-warn" };
@@ -227,8 +227,64 @@
     return h + '<p class="small" id="url_msg" role="status"></p><div class="dlg-btns"><button class="btn on" data-act="url-close">閉じる</button></div>';
   }
 
+
+  /* ---------- 前の学期から引き継ぐ ---------- */
+  function carryDefaults(S) {
+    const map = {}, on = {}, used = {};
+    A.st.classes.forEach(c => {
+      let m = S.classes.find(x => x.name === c.name && !used[x.id]) || S.classes.find(x => J.subjectOf(x) === J.subjectOf(c) && x.short === c.short && !used[x.id]);
+      if (m) { map[c.id] = m.id; used[m.id] = 1; on[c.id] = !(A.st.plans[c.id] || []).length; }
+    });
+    return { map, on };
+  }
+  function carryUnitRows(S, sc) {
+    const order = [];
+    (S.plans[sc.id] || []).forEach(b => { if (order.indexOf(b.u) < 0 && S.units[b.u]) order.push(b.u); });
+    return order.map(u => { const x = J.unitStats(S, sc, u); return { u, planned: x.planned, actual: x.actual }; });
+  }
+  function viewCarry() {
+    const C = A.ui.carry, st = A.st, others = (A.terms || []).filter(t => t.id !== A.termId).slice().reverse();
+    let h = "<h2>前の学期から引き継ぐ</h2>" +
+      '<p class="note" style="margin:0 0 8px">前の学期の「計画の順番・授業内容・単元・教材とリンク」を、この学期のクラスに写します。日付・行事・実施の記録は写しません。引き継ぎ元は、あとから別の学期を選んで、別のクラスにやり直すこともできます。</p>' +
+      '<label for="carry_src">引き継ぎ元の学期</label><select id="carry_src" data-act="carry-src"><option value="">選んでください</option>' +
+      others.map(t => '<option value="' + esc(t.id) + '"' + (C.src === t.id ? " selected" : "") + ">" + esc(t.name) + "</option>").join("") + "</select>";
+    const close = '<div class="dlg-btns"><button class="btn" data-act="carry-close">閉じる</button></div>';
+    if (!others.length) return h + '<p class="note" style="margin-top:10px">引き継げる他の学期がありません。</p>' + close;
+    if (C.loading) return h + '<p class="note" style="margin-top:10px">読み込んでいます…</p>' + close;
+    if (C.err) return h + '<p class="note" style="margin-top:10px;color:var(--cancel)">' + esc(C.err) + "</p>" + close;
+    if (!C.data) return h + close;
+    const S = C.data;
+    h += '<div class="csec">クラスの対応と、単元ごとの前回の計画・実績</div>';
+    let any = 0;
+    st.classes.forEach(c => {
+      const sc = S.classes.find(x => x.id === C.map[c.id]), has = (st.plans[c.id] || []).length > 0;
+      h += '<div class="carrybox k-' + subj(c.name) + '"><div class="carryh"><label class="carrychk"><input type="checkbox" data-act="carry-on" data-c="' + esc(c.id) + '"' + (C.on[c.id] && sc ? " checked" : "") + (sc ? "" : " disabled") + "> <b>" + esc(c.name) + "</b></label>" +
+        '<select aria-label="引き継ぎ元のクラス" data-act="carry-map" data-c="' + esc(c.id) + '"><option value="">引き継がない</option>' + S.classes.map(x => '<option value="' + esc(x.id) + '"' + (x.id === C.map[c.id] ? " selected" : "") + ">← " + esc(x.name) + "</option>").join("") + "</select></div>";
+      if (has && sc) h += '<p class="small" style="margin:2px 0 0;color:var(--cancel)">この学期のこのクラスには、すでに計画があります。チェックを入れて実行すると、置き換わります。</p>';
+      if (sc && C.on[c.id]) {
+        any++;
+        const rows = carryUnitRows(S, sc);
+        h += '<div class="tscroll"><table class="tbl carrytbl"><thead><tr><th>引き継ぐ</th><th>単元</th><th>前回の計画</th><th>前回の実績</th><th>差</th><th>使う時間</th></tr></thead><tbody>';
+        rows.forEach(r => {
+          const k = c.id + "|" + r.u, sel = C.sel[k] || { on: true, mode: "act" }, un = S.units[r.u], d = r.actual - r.planned;
+          h += "<tr><td><input type=\"checkbox\" aria-label=\"引き継ぐ\" data-act=\"carry-u\" data-k=\"" + esc(k) + '"' + (sel.on ? " checked" : "") + "></td><td><b>" + esc(un.name) + '</b> <span class="small muted">' + esc(un.subj || "共通") + "</span></td><td>" + r.planned + "時間</td><td>" + r.actual + "時間</td><td>" +
+            (d === 0 ? '<span class="pill p-ok">同じ</span>' : '<span class="pill p-warn">' + (d > 0 ? "+" : "") + d + "</span>") + '</td><td><span class="seg"><button data-act="carry-mode" data-k="' + esc(k) + '" data-v="plan" aria-pressed="' + (sel.mode === "plan") + '">計画 ' + r.planned + '</button><button data-act="carry-mode" data-k="' + esc(k) + '" data-v="act" aria-pressed="' + (sel.mode !== "plan") + '">実績 ' + r.actual + "</button></span></td></tr>";
+        });
+        h += "</tbody></table></div>";
+      }
+      h += "</div>";
+    });
+    return h + '<p class="small" style="margin:8px 0 0">「実績」を選ぶと、途中までで次のコマに続いた授業は、続きのコマも含めて写します。「計画」は、前回の計画のとおりに写します。「実績」の時間は、実施済みのコマだけの合計なので、学期の途中のデータでは少なく出ます（学期が終わってから引き継ぐと正確です）。前回の計画・実績・振り返りメモは、単元別タブにも残ります。</p>' +
+      '<div class="dlg-btns"><button class="btn" data-act="carry-close">閉じる</button><button class="btn on" data-act="carry-do"' + (any ? "" : " disabled") + ">この内容で引き継ぐ</button></div>";
+  }
+
   /* ---------- 単元別 ---------- */
   function subjectList() { const o = []; A.st.classes.forEach(c => { const x = J.subjectOf(c); if (x && o.indexOf(x) < 0) o.push(x); }); return o; }
+  function prevHtml(un) {
+    const pv = un.prev; if (!pv) return "";
+    const st = pv.stats || {}, rows = Object.keys(st).map(cid => "<li>" + esc(cname(cid)) + "：計画 " + st[cid][0] + "時間 → 実績 " + st[cid][1] + "時間</li>").join("");
+    return '<div class="prevbox"><b>前回（' + esc(pv.term) + '）</b>' + (rows ? "<ul>" + rows + "</ul>" : "") + (pv.note ? '<p class="small" style="margin:4px 0 0">振り返りメモ：' + esc(pv.note) + "</p>" : "") + "</div>";
+  }
   function viewUnit() {
     const st = A.st;
     let h = '<p class="note" style="margin-top:0">単元ごとに、配当（シラバス）・計画・実施した時間をクラス別に集計します。配当は入力できます。学期末の振り返りメモは、次回同じ授業をする時の参考になります。</p>';
@@ -251,7 +307,7 @@
         else if (al != null && al !== "") { const diff = x.slotsU - al; d = diff === 0 ? '<span class="pill p-ok">配当どおり</span>' : '<span class="pill p-warn">' + (diff > 0 ? "+" : "") + diff + "</span>"; }
         b += "<tr><td>" + esc(c.name) + '</td><td><input class="num-in" type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(c.name) + 'の配当" data-act="allot" data-u="' + u + '" data-c="' + c.id + '" value="' + (al == null ? "" : al) + '"></td><td>' + x.planned + "</td><td>" + x.actual + "</td><td>" + (x.start ? md(x.start) + "〜" + md(x.end) : "−") + "</td><td>" + d + "</td></tr>";
       });
-      b += '</tbody></table></div><div style="margin-top:12px"><button class="btn" data-act="flow-open" data-u="' + u + '">この単元の予定を各クラスの計画に入れる</button></div>' + matForm(u) + '<label class="small unitnote" for="ui_' + u + '">この単元の授業内容の予定（1行＝1コマ。一覧の画面で選んで使えます）</label><textarea id="ui_' + u + '" data-act="un-items" data-id="' + u + '" style="min-height:110px" placeholder="例：\n導入・語句の確認\n本文の読解①\n本文の読解②\nまとめ・小テスト">' + esc((un.items || []).join("\n")) + '</textarea><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
+      b += '</tbody></table></div>' + prevHtml(un) + '<div style="margin-top:12px"><button class="btn" data-act="flow-open" data-u="' + u + '">この単元の予定を各クラスの計画に入れる</button></div>' + matForm(u) + '<label class="small unitnote" for="ui_' + u + '">この単元の授業内容の予定（1行＝1コマ。一覧の画面で選んで使えます）</label><textarea id="ui_' + u + '" data-act="un-items" data-id="' + u + '" style="min-height:110px" placeholder="例：\n導入・語句の確認\n本文の読解①\n本文の読解②\nまとめ・小テスト">' + esc((un.items || []).join("\n")) + '</textarea><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
       h += panel("p-soon", esc(un.name), un.subj || "共通", b);
     });
     return h + panel("p-ev", "単元を追加", "", '<div class="addrow" style="grid-template-columns:160px 1fr auto"><select id="newunit_s" aria-label="科目">' + ["", ...subjectList()].map(x => '<option value="' + esc(x) + '">' + esc(x || "共通") + "</option>").join("") + '</select><input type="text" id="newunit" aria-label="単元名" placeholder="単元名（例：羅生門）"><button class="btn on" data-act="addunit">追加</button></div>');
@@ -367,7 +423,7 @@
     let h = '<div class="gridbar">' + seg("gord", A.ui.gridOrder, [["class", "クラス順"], ["subject", "科目ごと"]]) +
       seg("gsub", A.ui.gridSubj, [["all", "すべて"], ["gen", "現代の国語"], ["lang", "言語文化"]]) +
       seg("gedit", A.ui.gridEdit ? "e" : "v", [["e", "編集"], ["v", "見るだけ"]]) +
-      '<button class="btn" data-act="gridtoday">今日の位置へ</button><button class="btn" data-act="url-open" title="各クラスのGoogle Classroomのリンクを設定します">Classroomリンク</button><button class="btn" data-act="flow-open" title="単元別タブで作った予定を、各クラスの計画に順に入れます">単元の予定を計画に入れる</button><span class="glegend"><span><i class="lg-gen"></i>現代の国語</span><span><i class="lg-lang"></i>言語文化</span><span><i style="background:var(--today-soft);border-color:var(--today)"></i>今日</span></span><span class="note">' + (A.ui.gridEdit ? "コマの中で単元・内容・記録を直接直せます。「詳細」で順番の入れ替えなど。" : "コマをタップすると、記録・休講・内容の書き換えができます。") + '</span></div>';
+      '<button class="btn" data-act="gridtoday">今日の位置へ</button><button class="btn" data-act="carry-open" title="前の学期の計画・単元・教材を、この学期に写します">前の学期から引き継ぐ</button><button class="btn" data-act="url-open" title="各クラスのGoogle Classroomのリンクを設定します">Classroomリンク</button><button class="btn" data-act="flow-open" title="単元別タブで作った予定を、各クラスの計画に順に入れます">単元の予定を計画に入れる</button><span class="glegend"><span><i class="lg-gen"></i>現代の国語</span><span><i class="lg-lang"></i>言語文化</span><span><i style="background:var(--today-soft);border-color:var(--today)"></i>今日</span></span><span class="note">' + (A.ui.gridEdit ? "コマの中で単元・内容・記録を直接直せます。「詳細」で順番の入れ替えなど。" : "コマをタップすると、記録・休講・内容の書き換えができます。") + '</span></div>';
     h += '<div class="gridwrap" tabindex="-1"><table class="gridt' + (A.ui.gridEdit ? " edit" : "") + '" style="--n:' + cls.length + '"><colgroup><col class="col-d"><col class="col-e">' + cls.map(() => '<col class="col-c">').join("") + "</colgroup><thead><tr>" +
       '<th class="c-date" rowspan="2">日</th><th class="c-ev" rowspan="2">行事</th>' +
       cls.map(c => '<th class="gh1 hs-' + subj(c.name) + '">' + (c.url ? '<a class="gcl" href="' + esc(c.url) + '" target="_blank" rel="noopener noreferrer" title="Google Classroomを新しいタブで開く">' + esc(c.short) + ' <span aria-hidden="true">↗</span></a>' : '<button class="gcl none" data-act="url-open" title="Google Classroomのリンクを設定する">' + esc(c.short) + ' <span aria-hidden="true">＋</span></button>') + "<small>" + esc(c.tt.map(t => J.DOW[t[0]] + t[1]).join("・")) + "</small></th>").join("") + "</tr><tr>" +
@@ -457,5 +513,5 @@
     return h + '<div class="dlg-btns"><button class="btn on" data-act="close-cell">閉じる</button></div>';
   }
 
-  A.views = { urls: viewUrls, flow: viewFlow, flowItems, today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };
+  A.views = { carry: viewCarry, carryDefaults, urls: viewUrls, flow: viewFlow, flowItems, today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };
 })(window);
