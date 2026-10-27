@@ -95,7 +95,7 @@
 
 
   /* 単元の教材（最大4つ）と、教科書本文・指導書・プリント1・プリント2へのリンク */
-  const MATF = [["t", "教科書本文"], ["g", "指導書"], ["p1", "プリント1"], ["p2", "プリント2"]];
+  const MATF = [["d", "Googleドライブ"], ["t", "教科書本文"], ["g", "指導書"], ["p1", "プリント1"], ["p2", "プリント2"]];
   function matHtml(u) {
     const m = ((A.st.units[u] || {}).mats || []).filter(x => x && (x.n || MATF.some(f => x[f[0]])));
     if (!m.length) return "";

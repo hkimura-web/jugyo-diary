@@ -394,3 +394,4 @@ dialog#carrydlg{max-width:min(860px,calc(100vw - 24px));max-height:calc(100vh - 
 .carrytbl td,.carrytbl th{padding:4px 8px}
 .prevbox{margin-top:10px;padding:8px 12px;border-left:4px solid var(--sand-ink,var(--line));background:var(--sand-soft,var(--bg2));border-radius:6px;font-size:13px}
 .prevbox ul{margin:4px 0 0;padding-left:18px}
+.matlinks{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
