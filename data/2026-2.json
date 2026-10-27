@@ -1338,7 +1338,9 @@
  "unitNotes": {},
  "units": {
   "u1": {
-   "allot": {},
+   "allot": {
+    "c1": 8
+   },
    "items": [],
    "mats": [
     {
