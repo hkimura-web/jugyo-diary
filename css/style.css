@@ -395,3 +395,12 @@ dialog#carrydlg{max-width:min(860px,calc(100vw - 24px));max-height:calc(100vh - 
 .prevbox{margin-top:10px;padding:8px 12px;border-left:4px solid var(--sand-ink,var(--line));background:var(--sand-soft,var(--bg2));border-radius:6px;font-size:13px}
 .prevbox ul{margin:4px 0 0;padding-left:18px}
 .matlinks{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.remchip{font:inherit;font-size:12.5px;font-weight:700;margin-left:10px;padding:2px 10px;border-radius:999px;border:1px solid var(--today);background:var(--today-soft);color:var(--today-ink);cursor:pointer}
+.remchip:hover{background:var(--today);color:#fff}
+dialog#remdlg{max-width:min(620px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto}
+.remlist{display:grid;gap:4px;max-height:50vh;overflow:auto}
+.remitem{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;text-align:left;font:inherit;font-size:13.5px;color:var(--ink);padding:6px 10px;border-radius:8px;border:1px solid var(--tile-line,var(--line));background:var(--tile-bg,var(--bg2));cursor:pointer}
+.remitem:hover{border-color:var(--today)}
+.remt{color:var(--muted);font-size:12.5px;flex-basis:100%}
+td.flash{animation:flash 2.5s ease-out}
+@keyframes flash{0%,60%{outline:4px solid var(--today);outline-offset:-4px}100%{outline:4px solid transparent}}

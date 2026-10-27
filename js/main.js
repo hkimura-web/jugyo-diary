@@ -32,7 +32,9 @@
       else { dot = "ok"; txt = "GitHubに保存済み"; }
     } else if (dirty) { dot = "warn"; txt = "この端末に下書き保存中（GitHubには保存されていません）"; }
     else { dot = ""; txt = "閲覧モード：右上の「設定」でGitHubを接続すると、記録を保存できます"; }
-    $("status").innerHTML = '<span><span class="dot ' + dot + '"></span>' + J.esc(txt) + "</span>";
+    const pn = A.st ? A.views.pendingList().length : 0;
+    $("status").innerHTML = '<span><span class="dot ' + dot + '"></span>' + J.esc(txt) + "</span>" +
+      (pn ? ' <button class="remchip" data-act="rem-open" title="記録がまだ入っていない過去の授業">記録待ち ' + pn + "コマ</button>" : "");
   }
   function renderBanner() {
     const b = banner;
@@ -92,6 +94,22 @@
     });
     $("carrydlg").close();
     if (nCls) { commit(); toast(nCls + "クラスに " + nBlk + " コマ分の計画を引き継ぎました"); }
+  }
+  function openRem(auto) {
+    const today = J.ds(new Date());
+    if (auto && (LS.get("jd.remind") === today || today < A.st.term.start || today > J.addDays(A.st.term.end, 7) || !A.views.pendingList().length)) return;
+    $("rembody").innerHTML = A.views.rem();
+    if (!$("remdlg").open) $("remdlg").showModal();
+    if (auto) LS.set("jd.remind", today);
+  }
+  function goCell(key) {
+    $("remdlg").close(); A.ui.tab = "grid"; A.ui.gridReset = false; render();
+    const g = document.querySelector(".gridwrap"), td = g && g.querySelector('td[data-k="' + key.replace(/"/g, '\\"') + '"]');
+    if (td) {
+      g.scrollTop += td.getBoundingClientRect().top - g.getBoundingClientRect().top - 120;
+      g.scrollLeft += td.getBoundingClientRect().left - g.getBoundingClientRect().left - 200;
+      td.classList.add("flash"); setTimeout(() => td.classList.remove("flash"), 2500);
+    }
   }
   function fillFlow() { $("flowbody").innerHTML = A.views.flow(); }
   function fillCell() {
@@ -153,6 +171,7 @@
     if (!A.st.classes.some(c => c.id === A.ui.cls)) A.ui.cls = A.st.classes[0].id;
     clampAsof();
     render();
+    openRem(true);
     if (dirty && mode === "github" && !banner) flush();
   }
 
@@ -317,6 +336,10 @@
       case "carry-close": $("carrydlg").close(); break;
       case "carry-mode": { const k2 = t.dataset.k, cur2 = A.ui.carry.sel[k2] || { on: true, mode: "act" }; A.ui.carry.sel[k2] = Object.assign({}, cur2, { mode: t.dataset.v }); fillCarry(); break; }
       case "carry-do": applyCarry(); break;
+      case "rem-open": openRem(false); break;
+      case "rem-close": $("remdlg").close(); break;
+      case "rem-today": LS.set("jd.remind", J.ds(new Date())); $("remdlg").close(); toast("今日はもうお知らせしません（右上の「記録待ち」からいつでも見られます）"); break;
+      case "rem-go": goCell(k); break;
       case "flow-open": if (t.dataset.u) A.ui.flow.u = t.dataset.u; A.ui.flow.cls = {}; fillFlow(); if (!$("flowdlg").open) $("flowdlg").showModal(); break;
       case "flow-close": $("flowdlg").close(); break;
       case "flow-all": A.st.classes.forEach(c => { const sj = A.st.units[A.ui.flow.u].subj; if ((!sj || sj === J.subjectOf(c)) && A.views.flowItems(A.ui.flow.u, c.id).length) A.ui.flow.cls[c.id] = true; }); fillFlow(); break;

@@ -278,6 +278,29 @@
       '<div class="dlg-btns"><button class="btn" data-act="carry-close">閉じる</button><button class="btn on" data-act="carry-do"' + (any ? "" : " disabled") + ">この内容で引き継ぐ</button></div>";
   }
 
+
+  /* ---------- 記録がまだ入っていない過去の授業 ---------- */
+  function pendingList() {
+    const today = J.ds(new Date()), out = [];
+    A.st.classes.forEach(c => J.project(A.st, c).rows.forEach(r => {
+      if (r.date < today && (r.kind === "plan" || r.kind === "empty")) out.push({ r, c });
+    }));
+    out.sort((a, b) => a.r.date < b.r.date ? -1 : a.r.date > b.r.date ? 1 : a.c.id < b.c.id ? -1 : 1);
+    return out;
+  }
+  function viewRem() {
+    const L = pendingList();
+    if (!L.length) return '<h2>記録のもれはありません</h2><p class="note">過去の授業は、すべて記録（または休講・授業なしの設定）が入っています。</p><div class="dlg-btns"><button class="btn on" data-act="rem-close">閉じる</button></div>';
+    const show = L.slice(0, 40);
+    let h = '<h2>記録がまだ入っていない授業があります</h2><p class="note" style="margin:0 0 8px">日付が過ぎたのに、「実施した」などの記録が入っていない授業が <b>' + L.length + "コマ</b>あります。押すと、一覧のそのコマへ移動します。</p><div class=\"remlist\">";
+    show.forEach(x => {
+      h += '<button class="remitem k-' + subj(x.c.name) + '" data-act="rem-go" data-key="' + esc(x.r.key) + '"><b class="num">' + md(x.r.date) + "（" + dw(x.r.date) + "）</b> " + esc(x.c.short) + ' <span class="per">' + perTxt(x.r) + "</span>" +
+        '<span class="remt">' + esc(x.r.kind === "empty" ? "（計画なし）" : clip(rowTitle(x.r), 36)) + "</span></button>";
+    });
+    h += "</div>" + (L.length > show.length ? '<p class="small">ほか ' + (L.length - show.length) + " コマ</p>" : "");
+    return h + '<div class="dlg-btns" style="justify-content:space-between"><button class="btn" data-act="rem-today">今日はもう表示しない</button><span class="btns"><button class="btn" data-act="rem-close">閉じる</button><button class="btn on" data-act="rem-go" data-key="' + esc(show[0].r.key) + '">いちばん古いコマへ</button></span></div>';
+  }
+
   /* ---------- 単元別 ---------- */
   function subjectList() { const o = []; A.st.classes.forEach(c => { const x = J.subjectOf(c); if (x && o.indexOf(x) < 0) o.push(x); }); return o; }
   function prevHtml(un) {
@@ -380,13 +403,13 @@
         '<textarea class="gta" aria-label="授業内容" placeholder="授業内容を入力（計画なし）" data-act="gnew-t" data-key="' + key + '"></textarea>' + matHtml(u) + "</div>";
     }
     h += '<textarea class="gta gmemo" aria-label="実施しての記録" placeholder="記録（どこまで進んだか）" data-act="note" data-key="' + key + '">' + esc((r.rec && r.rec.n) || "") + "</textarea>";
-    return '<td class="gc has edit ' + sk + " s-" + k + (waiting ? " s-wait" : "") + '">' + h + "</td>";
+    return '<td data-k="' + key + '" class="gc has edit ' + sk + " s-" + k + (waiting ? " s-wait" : "") + '">' + h + "</td>";
   }
   function gridCell(r, c, asof, unitChip) {
     const k = r.kind, sk = "k-" + subj(c.name);
     if (k === "off") {
       const closed = /休校|休講/.test(r.off);
-      return '<td class="gc has off ' + sk + (closed ? " closed" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(r.off) + '">' +
+      return '<td data-k="' + esc(r.key) + '" class="gc has off ' + sk + (closed ? " closed" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(r.off) + '">' +
         '<div class="gtop"><span class="per">' + perTxt(r) + '</span><span class="gk off">' + (closed ? "休校" : "授業なし") + "</span>" + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + "</div>" +
         '<div class="gt">' + esc(clip(r.off, 40)) + '</div></td>';
     }
@@ -405,7 +428,7 @@
     const fl = A.st.flags && A.st.flags[r.key];
     const evTag = r.ev ? '<span class="gk ev" title="' + esc(r.ev) + '">行事</span>' : "";
     const full = plain(text) + (memo ? "／" + memo : "") + (r.ev ? "／行事：" + r.ev : "");
-    return '<td class="gc has ' + sk + " s-" + k + (blank ? " s-blank" : "") + (waiting ? " s-wait" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(full) + '">' +
+    return '<td data-k="' + esc(r.key) + '" class="gc has ' + sk + " s-" + k + (blank ? " s-blank" : "") + (waiting ? " s-wait" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(full) + '">' +
       '<div class="gtop"><span class="per">' + perTxt(r) + "</span>" + (unitChip ? '<span class="gu">' + esc(unitChip) + "</span>" : "") + (r.hrs > 1 ? '<span class="gh">' + r.hrs + "時間</span>" : "") + evTag + mark + "</div>" +
       '<div class="gt">' + (fl ? '<span class="flagchip">' + esc(fl) + "</span> " : "") + esc(plain(text)) + "</div>" + (memo ? '<div class="gm">' + esc(memo) + "</div>" : "") + r.blocks.map(b => b.u).filter((x, i, ar) => ar.indexOf(x) === i).map(matHtml).join("") + "</td>";
   }
@@ -513,5 +536,5 @@
     return h + '<div class="dlg-btns"><button class="btn on" data-act="close-cell">閉じる</button></div>';
   }
 
-  A.views = { carry: viewCarry, carryDefaults, urls: viewUrls, flow: viewFlow, flowItems, today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };
+  A.views = { rem: viewRem, pendingList, carry: viewCarry, carryDefaults, urls: viewUrls, flow: viewFlow, flowItems, today: viewToday, plan: viewPlan, grid: viewGrid, unit: viewUnit, sum: viewSummary, cell: viewCell };
 })(window);
