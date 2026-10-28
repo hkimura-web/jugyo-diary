@@ -119,10 +119,11 @@
   /* 単元の教材（最大4つ）と、教科書本文・指導書・プリント1・プリント2へのリンク */
   const MATF = [["d", "Googleドライブ"], ["t", "教科書"], ["g", "指導書"], ["p1", "ワークシート1"], ["p2", "ワークシート2"], ["p3", "ワークシート3"]];
   function matHtml(u) {
-    const m = ((A.st.units[u] || {}).mats || []).filter(x => x && (x.n || MATF.some(f => x[f[0]])));
+    const m = ((A.st.units[u] || {}).mats || []).filter(x => x && (x.n || (x.x && x.x.length) || MATF.some(f => x[f[0]])));
     if (!m.length) return "";
     return '<div class="gmat">' + m.map(x => '<div class="gm1">' + (x.n ? "<b>" + esc(x.n) + "</b>" : "") +
-      MATF.filter(f => x[f[0]]).map(f => ' <a class="ml" href="' + esc(x[f[0]]) + '" target="_blank" rel="noopener noreferrer">' + f[1] + "</a>").join("") + "</div>").join("") + "</div>";
+      MATF.filter(f => x[f[0]]).map(f => ' <a class="ml" href="' + esc(x[f[0]]) + '" target="_blank" rel="noopener noreferrer">' + f[1] + "</a>").join("") +
+      (x.x || []).map(e => ' <a class="ml" href="' + esc(e.u) + '" target="_blank" rel="noopener noreferrer" title="' + esc(e.l) + '">' + esc(A.shortLabel ? A.shortLabel(e.l) : e.l) + "</a>").join("") + "</div>").join("") + "</div>";
   }
   function matForm(u) {
     const un = A.st.units[u], m = un.mats || [];
@@ -131,7 +132,7 @@
       const x = m[i] || {};
       h += '<div class="matbox"><label class="small" for="mn_' + u + i + '">教材' + (i + 1) + "の名前</label>" +
         '<input type="text" id="mn_' + u + i + '" data-act="mat" data-u="' + u + '" data-i="' + i + '" data-f="n" value="' + esc(x.n || "") + '" placeholder="' + (i === 0 ? "例：羅生門" : "") + '">' +
-        '<div class="matlinks">' + MATF.map(f => '<div><label class="small" for="m_' + u + i + f[0] + '">' + f[1] + '</label><input type="url" id="m_' + u + i + f[0] + '" data-act="mat" data-u="' + u + '" data-i="' + i + '" data-f="' + f[0] + '" value="' + esc(x[f[0]] || "") + '" placeholder="https://…" autocomplete="off"></div>').join("") + "</div></div>";
+        '<div class="matlinks">' + MATF.map(f => '<div><label class="small" for="m_' + u + i + f[0] + '">' + f[1] + '</label><input type="url" id="m_' + u + i + f[0] + '" data-act="mat" data-u="' + u + '" data-i="' + i + '" data-f="' + f[0] + '" value="' + esc(x[f[0]] || "") + '" placeholder="https://…" autocomplete="off"></div>').join("") + "</div>" + (A.views.matPicker ? A.views.matPicker(u, i) : "") + (A.views.matExtra ? A.views.matExtra(u, i) : "") + "</div>";
     }
     return h;
   }

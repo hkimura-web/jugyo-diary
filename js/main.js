@@ -122,7 +122,7 @@
     if (!A.st) return;
     $("sub").textContent = A.st.term.name + "（" + J.md(A.st.term.start) + "〜" + J.md(A.st.term.end) + "）";
     $("asof").value = A.ui.asof;
-    ["today", "plan", "grid", "unit", "sum"].forEach(t => $("tab-" + t).setAttribute("aria-selected", A.ui.tab === t));
+    ["today", "plan", "grid", "unit", "sum", "lib"].forEach(t => $("tab-" + t).setAttribute("aria-selected", A.ui.tab === t));
     document.querySelector(".wrap").classList.toggle("wide", A.ui.tab === "grid");
     const old = document.querySelector(".gridwrap");
     const keep = old && !A.ui.gridReset ? { t: old.scrollTop, l: old.scrollLeft } : null;
@@ -324,7 +324,7 @@
 
   /* ---------- イベント ---------- */
   document.addEventListener("click", e => {
-    if (e.target.closest("a.ml, a.gcl")) return;
+    if (e.target.closest("a[target=_blank]")) return;
     if (e.target.closest(".hero") && !e.target.closest(".tools")) { goHome(); return; }
     const t = e.target.closest("[data-tab],[data-act]"); if (!t) return;
     if (t.dataset.tab) { A.ui.tab = t.dataset.tab; A.ui.open = null; render(); return; }
@@ -502,6 +502,8 @@
     if (document.visibilityState === "hidden" && dirty) { clearTimeout(timer); flush(); }
     else if (document.visibilityState === "visible") refreshLatest();
   });
+
+  A.render = render; A.toast = toast; A.commit = commit;
 
   /* ---------- 起動 ---------- */
   (async function boot() {
