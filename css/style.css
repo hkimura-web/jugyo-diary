@@ -404,3 +404,7 @@ dialog#remdlg{max-width:min(620px,calc(100vw - 24px));max-height:calc(100vh - 24
 .remt{color:var(--muted);font-size:12.5px;flex-basis:100%}
 td.flash{animation:flash 2.5s ease-out}
 @keyframes flash{0%,60%{outline:4px solid var(--today);outline-offset:-4px}100%{outline:4px solid transparent}}
+.hero{cursor:pointer}
+.hero .tools{cursor:default}
+.brand{cursor:pointer}
+.brand:hover h1{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:5px}

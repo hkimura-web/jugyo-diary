@@ -111,6 +111,7 @@
       td.classList.add("flash"); setTimeout(() => td.classList.remove("flash"), 2500);
     }
   }
+  function goHome() { A.ui.tab = "today"; A.ui.open = null; render(); window.scrollTo(0, 0); }
   function fillFlow() { $("flowbody").innerHTML = A.views.flow(); }
   function fillCell() {
     const html = A.ui.cell ? A.views.cell(A.ui.cell) : null;
@@ -324,6 +325,7 @@
   /* ---------- イベント ---------- */
   document.addEventListener("click", e => {
     if (e.target.closest("a.ml, a.gcl")) return;
+    if (e.target.closest(".hero") && !e.target.closest(".tools")) { goHome(); return; }
     const t = e.target.closest("[data-tab],[data-act]"); if (!t) return;
     if (t.dataset.tab) { A.ui.tab = t.dataset.tab; A.ui.open = null; render(); return; }
     const a = t.dataset.act, k = t.dataset.key, id = t.dataset.id;
@@ -492,6 +494,7 @@
   });
   document.addEventListener("keydown", e => {
     if (e.key === "Enter" && e.target.matches && e.target.matches('td[data-act="cell"]')) e.target.click();
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".brand")) { e.preventDefault(); goHome(); }
   });
   $("celldlg").addEventListener("close", () => { A.ui.cell = null; render(); });
   window.addEventListener("beforeunload", e => { if (dirty && mode === "github") { e.preventDefault(); e.returnValue = ""; } });
