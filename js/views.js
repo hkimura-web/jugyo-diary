@@ -13,6 +13,28 @@
   const clip = (s, n) => { s = plain(s); return s.length > n ? s.slice(0, n) + "…" : s; };
   const cur = () => A.st.classes.find(c => c.id === A.ui.cls) || A.st.classes[0];
   const perTxt = r => (r.periods && r.periods.length ? r.periods.join("・") + "時間目" : "");
+  /* 「別の内容」のコマ：他の科目に入れ替えたとき（例：現代の国語の時間に言語文化をやった）の科目・単元・内容 */
+  function freeInfo(r) {
+    const cid = r.key.split("|")[0], c = A.st.classes.find(x => x.id === cid), own = c ? J.subjectOf(c) : "";
+    const sj = (r.rec && r.rec.sj) || "", un = r.rec && r.rec.fu && A.st.units[r.rec.fu] ? A.st.units[r.rec.fu].name : "";
+    return { swapped: sj && sj !== own ? sj : "", unit: un, text: (r.rec && r.rec.t) || "" };
+  }
+  function freeTitle(r) {
+    const f = freeInfo(r), body = [f.unit, f.text].filter(Boolean).join("　");
+    return (f.swapped ? "【" + f.swapped + "】" : "") + (body || (f.swapped ? "" : "別の内容"));
+  }
+  /* 別の内容の入力欄（科目・単元・内容）。idp は入力欄のid用 */
+  function freeForm(r, idp, compact) {
+    const cid = r.key.split("|")[0], c = A.st.classes.find(x => x.id === cid), own = J.subjectOf(c), sj = (r.rec && r.rec.sj) || own, key = esc(r.key);
+    const subs = subjectList(), us = Object.keys(A.st.units).filter(u => !A.st.units[u].subj || A.st.units[u].subj === sj);
+    const cl = compact ? "gsel" : "";
+    return (compact ? "" : '<label for="fs_' + idp + '">実施した科目（他の科目に入れ替えたときは変えてください）</label>') +
+      '<select id="fs_' + idp + '" class="' + cl + '" aria-label="実施した科目" data-act="fsj" data-key="' + key + '">' + subs.map(x => '<option value="' + esc(x) + '"' + (x === sj ? " selected" : "") + ">" + esc(x) + (x === own ? "（このクラスの科目）" : "に入れ替え") + "</option>").join("") + "</select>" +
+      (compact ? "" : '<label for="fu_' + idp + '">単元（なければ空のままで）</label>') +
+      '<select id="fu_' + idp + '" class="' + cl + '" aria-label="単元" data-act="ffu" data-key="' + key + '"><option value="">（単元を選ばない）</option>' + us.map(u => '<option value="' + u + '"' + (u === (r.rec && r.rec.fu) ? " selected" : "") + ">" + esc(A.st.units[u].name) + "</option>").join("") + "</select>" +
+      (compact ? '<input type="text" class="gin" aria-label="何をやったか" placeholder="何をやったか" data-act="ft" data-key="' + key + '" value="' + esc((r.rec && r.rec.t) || "") + '">'
+        : '<label for="ft_' + idp + '">何をやったか</label><input type="text" id="ft_' + idp + '" data-act="ft" data-key="' + key + '" value="' + esc((r.rec && r.rec.t) || "") + '" placeholder="例：学年集会、テスト返却、言語文化の授業">');
+  }
   const hrsTxt = n => n + "時間";
   const parts = n => { const i = n.indexOf(" "); return i < 0 ? [n, ""] : [n.slice(0, i), n.slice(i + 1)]; };
   const subj = n => /現代/.test(n) ? "gen" : /言語|古/.test(n) ? "lang" : "etc";
@@ -48,7 +70,7 @@
   function rowTitle(r) {
     if (r.kind === "off") return r.off;
     if (r.kind === "cancel") return "休講";
-    if (r.kind === "free") return r.rec.t || "別の内容";
+    if (r.kind === "free") return freeTitle(r);
     if (r.kind === "empty") return "この日に入れる計画がありません";
     return (r.cont ? "（続き）" : "") + (r.blocks.map(b => b.t).filter(Boolean).join("　／　") || "（内容未入力）");
   }
@@ -65,7 +87,7 @@
     }
     let h = '<div class="ed"><div class="btns">' + B("done", "実施した") + B("part", "途中まで") + B("cancel", "休講にする") + B("free", "別の内容にする") +
       '<button class="btn" data-act="offset" data-key="' + esc(r.key) + '">行事で授業なし</button>' + B("plan", "予定に戻す") + "</div>";
-    if (s === "free") h += '<label class="small" for="t_' + id + '">何をやったか</label><input type="text" id="t_' + id + '" data-act="ft" data-key="' + esc(r.key) + '" value="' + esc(r.rec.t || "") + '" placeholder="例：学年集会、テスト返却">';
+    if (s === "free") h += freeForm(r, id + "e", false);
     r.blocks.forEach((b, i) => {
       h += '<label class="small" for="bt_' + id + i + '">授業内容（' + esc(unitName(b.u)) + '）実際にやった内容に書き換えられます</label><textarea id="bt_' + id + i + '" data-act="bt" data-id="' + esc(b.id) + '">' + esc(b.t) + "</textarea>";
     });
@@ -389,7 +411,7 @@
     h += '<div class="gst">' + St("done", "実施") + St("part", "途中") + St("cancel", "休講") + St("free", "別") + St("plan", "予定") +
       '<button class="mini" data-act="offset" data-key="' + key + '" title="行事などで授業なし（休校）にする">なし</button></div>';
     if (s === "cancel") h += '<div class="gnote">休講（以降の計画が後ろへずれます）</div>';
-    else if (s === "free") h += '<input type="text" class="gin" aria-label="何をやったか" placeholder="何をやったか" data-act="ft" data-key="' + key + '" value="' + esc(r.rec.t || "") + '">';
+    else if (s === "free") h += freeForm(r, "g" + sid(r.key), true);
     else if (r.blocks.length) {
       r.blocks.forEach(b => {
         h += '<div class="gblk' + (r.cont ? " cont" : "") + '"><select class="gsel" aria-label="単元" data-act="blk-u" data-id="' + esc(b.id) + '">' + unitOptions(b.u, true, c.id) + "</select>" +
@@ -418,7 +440,7 @@
     let text, memo = (r.rec && r.rec.n) || "", mark = "";
     const blank = k === "plan" && r.blocks.length && r.blocks.every(b => !(b.t || "").trim());
     if (k === "cancel") { text = "休講"; }
-    else if (k === "free") text = r.rec.t || "別の内容";
+    else if (k === "free") text = freeTitle(r);
     else if (k === "empty") text = "（計画なし）";
     else if (blank) text = "（内容を入力）";
     else text = (r.cont ? "（続き）" : "") + r.blocks.map(b => b.t).filter(Boolean).join(" ／ ");
@@ -508,7 +530,7 @@
     h += '<div class="csec">このコマの状態</div><div class="btns">' + B("done", "実施した") + B("part", "途中まで") + B("cancel", "休講にする") + B("free", "別の内容にする") +
       '<button class="btn" data-act="offset" data-key="' + k + '">行事で授業なし</button>' + B("plan", "予定に戻す") + "</div>";
     if (s === "free") h += '<p class="note" style="margin:8px 0 0">「別の内容」は、計画とは別のこと（学年集会・テスト返却など）をやった日用です。計画の授業内容として入れたいときは「予定に戻す」を押してください。</p>' +
-      '<label for="ft_' + id + '">何をやったか</label><input type="text" id="ft_' + id + '" data-act="ft" data-key="' + k + '" value="' + esc(r.rec.t || "") + '" placeholder="例：学年集会、テスト返却">';
+      freeForm(r, id + "d", false);
     if (s === "cancel") h += '<p class="note" style="margin:8px 0 0">このコマは使わず、以降の計画が自動で後ろへずれました。</p>';
     if (s !== "cancel" && s !== "free") {
       h += '<div class="csec">授業の単元と内容</div>';

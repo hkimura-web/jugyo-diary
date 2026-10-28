@@ -228,15 +228,17 @@
   }
   function setRec(key, patch) {
     const nx = Object.assign({}, A.st.rec[key] || {}, patch);
-    if (!nx.s || nx.s === "plan") { delete nx.s; delete nx.t; }
-    else if (nx.s !== "free") delete nx.t;
+    if (!nx.s || nx.s === "plan") { delete nx.s; delete nx.t; delete nx.sj; delete nx.fu; }
+    else if (nx.s !== "free") { delete nx.t; delete nx.sj; delete nx.fu; }
+    if (!nx.sj) delete nx.sj; if (!nx.fu) delete nx.fu;
     if (!nx.s && !nx.n) delete A.st.rec[key]; else A.st.rec[key] = nx;
     commit();
   }
   function setRecQuiet(key, patch) {
     const nx = Object.assign({}, A.st.rec[key] || {}, patch);
-    if (!nx.s || nx.s === "plan") { delete nx.s; delete nx.t; }
-    else if (nx.s !== "free") delete nx.t;
+    if (!nx.s || nx.s === "plan") { delete nx.s; delete nx.t; delete nx.sj; delete nx.fu; }
+    else if (nx.s !== "free") { delete nx.t; delete nx.sj; delete nx.fu; }
+    if (!nx.sj) delete nx.sj; if (!nx.fu) delete nx.fu;
     if (!nx.s && !nx.n) delete A.st.rec[key]; else A.st.rec[key] = nx;
     quiet();
   }
@@ -443,6 +445,8 @@
     if (a === "carry-u") { const k2 = t.dataset.k, cur2 = A.ui.carry.sel[k2] || { on: true, mode: "act" }; A.ui.carry.sel[k2] = Object.assign({}, cur2, { on: t.checked }); return; }
     if (a === "flow-u") { A.ui.flow.u = v; A.ui.flow.cls = {}; fillFlow(); return; }
     if (a === "flow-c") { A.ui.flow.cls[t.dataset.c] = t.checked; fillFlow(); return; }
+    if (a === "fsj") { const o = rowOf(t.dataset.key), own = o ? J.subjectOf(o.c) : ""; A.ui.cellRefresh = true; setRec(t.dataset.key, { sj: v === own ? "" : v, fu: "" }); return; }
+    if (a === "ffu") { A.ui.cellRefresh = true; setRec(t.dataset.key, { fu: v }); return; }
     if (a === "note") { setRecQuiet(t.dataset.key, { n: v.trim() }); }
     else if (a === "ft") { setRecQuiet(t.dataset.key, { t: v.trim() }); }
     else if (a === "bt" || a === "blk-t") { const b = blockById(t.dataset.id); if (b) { b.t = v.trim(); quiet(); } }
