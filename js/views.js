@@ -409,7 +409,7 @@
     return last && ks.indexOf(last) >= 0 ? last : (ks[0] || Object.keys(A.st.units)[0]);
   }
   function gridCellEdit(r, c, asof) {
-    const k = r.kind, sk = "k-" + subj(c.name), key = esc(r.key), s = (r.rec && r.rec.s) || "plan";
+    const k = r.kind, sk = "k-" + subj(k === "free" && r.rec && r.rec.sj ? r.rec.sj : c.name), key = esc(r.key), s = (r.rec && r.rec.s) || "plan";
     const waiting = r.date < asof && k === "plan";
     const St = (v, t) => '<button class="mini' + (s === v ? " on" : "") + '" data-act="st" data-key="' + key + '" data-v="' + v + '" aria-pressed="' + (s === v) + '">' + t + "</button>";
     let h = '<div class="gtop"><span class="per">' + perTxt(r) + "</span>" + (waiting ? '<span class="gk wait">記録待ち</span>' : "") +
@@ -436,7 +436,7 @@
     return '<td data-k="' + key + '" class="gc has edit ' + sk + " s-" + k + (waiting ? " s-wait" : "") + '">' + h + "</td>";
   }
   function gridCell(r, c, asof, unitChip) {
-    const k = r.kind, sk = "k-" + subj(c.name);
+    const k = r.kind, sk = "k-" + subj(k === "free" && r.rec && r.rec.sj ? r.rec.sj : c.name);
     if (k === "off") {
       const closed = /休校|休講/.test(r.off);
       return '<td data-k="' + esc(r.key) + '" class="gc has off ' + sk + (closed ? " closed" : "") + '" data-act="cell" data-key="' + esc(r.key) + '" tabindex="0" role="button" title="' + esc(r.off) + '">' +

@@ -102,6 +102,17 @@
     if (!$("remdlg").open) $("remdlg").showModal();
     if (auto) LS.set("jd.remind", today);
   }
+  /* 開きっぱなしのタブでも、日付が変わったらお知らせを出す（画面に戻ったとき・定期チェック） */
+  function remCheck() {
+    if (!A.st || document.hidden) return;
+    const open = document.querySelector("dialog[open]");
+    if (open) return;
+    openRem(true);
+    renderStatus();
+  }
+  document.addEventListener("visibilitychange", remCheck);
+  window.addEventListener("focus", remCheck);
+  setInterval(remCheck, 10 * 60 * 1000);
   function goCell(key) {
     $("remdlg").close(); A.ui.tab = "grid"; A.ui.gridReset = false; render();
     const g = document.querySelector(".gridwrap"), td = g && g.querySelector('td[data-k="' + key.replace(/"/g, '\\"') + '"]');
