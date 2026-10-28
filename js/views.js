@@ -96,6 +96,11 @@
     return h + "</div>";
   }
 
+  function slotMats(r, units) {
+    const us = units.slice();
+    if (r.rec && r.rec.fu && A.st.units[r.rec.fu] && us.indexOf(r.rec.fu) < 0) us.push(r.rec.fu);
+    return us.map(u => matHtml(u)).join("");
+  }
   function slotCard(r, withClass, remTxt) {
     const past = r.date < A.ui.asof, k = r.kind, today = r.date === A.ui.asof;
     const units = [], seen = {};
@@ -112,7 +117,7 @@
     const head = '<div class="sd"><b>' + md(r.date) + "</b><span class=\"dow\">" + dw(r.date) + "</span>" + (perTxt(r) ? '<span class="per">' + perTxt(r) + "</span>" : "") + (cn ? '<small class="k-' + subj(cn[1]) + '">' + esc(cn[0]) + " " + esc(cn[1].replace("の国語", "")) + "</small>" : "") + "</div>" +
       '<div class="st">' + chips + "<b>" + esc(rowTitle(r)) + "</b>" + meta + ev + '</div><div class="stt">' + pillFor(r) + (remTxt ? '<span class="rem">' + remTxt + "</span>" : "") + "</div>";
     return '<div class="slot' + (k === "off" ? " off" : "") + (past ? " past" : "") + (today ? " today" : "") + (k === "cancel" ? " cancelled" : "") + '">' +
-      '<button class="srow" data-act="open" data-key="' + esc(r.key) + '" aria-expanded="' + open + '">' + head + "</button>" + (open ? editor(r) : "") + "</div>";
+      '<button class="srow" data-act="open" data-key="' + esc(r.key) + '" aria-expanded="' + open + '">' + head + "</button>" + (k === "off" ? "" : slotMats(r, units)) + (open ? editor(r) : "") + "</div>";
   }
 
 
