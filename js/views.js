@@ -130,7 +130,7 @@
 
     const rows = [];
     all.forEach(({ s }) => s.pj.rows.forEach(r => rows.push(r)));
-    rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.key < b.key ? -1 : 1);
+    rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : ((a.periods || [0])[0] - (b.periods || [0])[0]) || (a.key < b.key ? -1 : 1));
     const evT = st.events[asof];
     const today = rows.filter(r => r.date === asof);
     h += panel("p-now", md(asof) + "（" + dw(asof) + "）の授業", today.length ? today.length + "コマ" : "", (evT ? '<p class="note" style="margin:0 0 8px">行事：' + esc(evT) + "</p>" : "") +
