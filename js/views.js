@@ -339,7 +339,7 @@
     uKeys.forEach(u => {
       const un = st.units[u];
       if ((un.subj || "") !== lastSj) { lastSj = un.subj || ""; h += '<h2 class="subjh k-' + subj(lastSj) + '">' + esc(lastSj || "共通") + "</h2>"; }
-      const cs = st.classes.filter(c => (st.plans[c.id] || []).some(b => b.u === u) || un.allot[c.id] != null || (un.subj && J.subjectOf(c) === un.subj));
+      const cs = st.classes.filter(c => (st.plans[c.id] || []).some(b => b.u === u) || un.allot[c.id] != null || (un.subj && J.subjectOf(c) === un.subj) || J.unitStats(st, c, u).swapped > 0);
       const subjOpts = ["", ...subjectList()].map(x => '<option value="' + esc(x) + '"' + (x === (un.subj || "") ? " selected" : "") + ">" + esc(x || "共通（どの科目でも使う）") + "</option>").join("");
       let b = '<div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label class="small" for="un_subj_' + u + '">科目</label><select id="un_subj_' + u + '" data-act="un-subj" data-id="' + u + '">' + subjOpts + '</select></div>' +
         '<div><label class="small" for="un_name_' + u + '">単元名（科目名は付けない）</label><input type="text" id="un_name_' + u + '" data-act="un-name" data-id="' + u + '" value="' + esc(un.name) + '"></div></div>' +
@@ -350,7 +350,7 @@
         let d = '<span class="note">配当未入力</span>';
         if (x.leftU) d = '<span class="pill p-warn">' + x.leftU + "時間入らない</span>";
         else if (al != null && al !== "") { const diff = x.slotsU - al; d = diff === 0 ? '<span class="pill p-ok">配当どおり</span>' : '<span class="pill p-warn">' + (diff > 0 ? "+" : "") + diff + "</span>"; }
-        b += "<tr><td>" + esc(c.name) + '</td><td><input class="num-in" type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(c.name) + 'の配当" data-act="allot" data-u="' + u + '" data-c="' + c.id + '" value="' + (al == null ? "" : al) + '"></td><td>' + x.planned + "</td><td>" + x.actual + "</td><td>" + (x.start ? md(x.start) + "〜" + md(x.end) : "−") + "</td><td>" + d + "</td></tr>";
+        b += "<tr><td>" + esc(c.name) + '</td><td><input class="num-in" type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(c.name) + 'の配当" data-act="allot" data-u="' + u + '" data-c="' + c.id + '" value="' + (al == null ? "" : al) + '"></td><td>' + x.planned + "</td><td>" + x.actual + (x.swapped ? ' <span class="small muted">（別の内容で ' + x.swapped + '）</span>' : "") + "</td><td>" + (x.start ? md(x.start) + "〜" + md(x.end) : "−") + "</td><td>" + d + "</td></tr>";
       });
       b += '</tbody></table></div>' + prevHtml(un) + '<div style="margin-top:12px"><button class="btn" data-act="flow-open" data-u="' + u + '">この単元の予定を各クラスの計画に入れる</button></div>' + matForm(u) + '<label class="small unitnote" for="ui_' + u + '">この単元の授業内容の予定（1行＝1コマ。一覧の画面で選んで使えます）</label><textarea id="ui_' + u + '" data-act="un-items" data-id="' + u + '" style="min-height:110px" placeholder="例：\n導入・語句の確認\n本文の読解①\n本文の読解②\nまとめ・小テスト">' + esc((un.items || []).join("\n")) + '</textarea><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
       h += panel("p-soon", esc(un.name), un.subj || "共通", b);
@@ -368,12 +368,14 @@
       tile(sum(r => r.kind === "done" || r.kind === "part"), "実施（時間）") + tile(sum(r => r.kind === "cancel"), "休講") + tile(sum(r => r.kind === "free"), "別の内容") + tile(sum(r => r.kind === "off"), "行事などで授業なし") + tile(s0.remain, "これから（残り）") + "</div>" + meter(split(rows, asof), true));
     const order = [];
     (st.plans[cls.id] || []).forEach(b => { if (order.indexOf(b.u) < 0) order.push(b.u); });
+    rows.forEach(r => { if (r.kind === "free" && r.rec && r.rec.fu && st.units[r.rec.fu] && order.indexOf(r.rec.fu) < 0) order.push(r.rec.fu); });
     let ub = "<div class='grid'>";
     order.forEach(u => {
-      const ru = rows.filter(r => r.blocks.some(b => b.u === u));
+      const ru = rows.filter(r => r.blocks.some(b => b.u === u) || (r.kind === "free" && r.rec && r.rec.fu === u));
       if (!ru.length) return;
       const x = J.unitStats(st, cls, u), al = (st.units[u] || { allot: {} }).allot[cls.id];
-      const firstB = ru[0].blocks.find(b => b.u === u), lastB = ru[ru.length - 1].blocks.filter(b => b.u === u).pop();
+      const txt = (r, first) => { const bs = r.blocks.filter(b => b.u === u); return bs.length ? (first ? bs[0] : bs[bs.length - 1]).t : (r.rec && r.rec.t) || "別の内容"; };
+      const firstB = { t: txt(ru[0], true) }, lastB = { t: txt(ru[ru.length - 1], false) };
       ub += '<div class="card ucard"><h3>' + esc(unitName(u)) + (st.units[u].subj ? ' <small class="muted">' + esc(st.units[u].subj) + "</small>" : "") + '</h3><div class="num">' + md(ru[0].date) + "〜" + md(ru[ru.length - 1].date) + "　" + x.slotsU + "時間（実施 " + x.actual + (al ? "／配当 " + al : "") + ")</div>" +
         '<p class="flow">はじめ：' + esc(clip(firstB.t, 46)) + "<br>おわり：" + esc(clip(lastB.t, 46)) + "</p>" +
         (st.unitNotes[u] ? '<p class="flow" style="color:var(--ink)">メモ：' + esc(clip(st.unitNotes[u], 120)) + "</p>" : "") + "</div>";

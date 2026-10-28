@@ -84,7 +84,16 @@
       end = r.date;
     }));
     const leftU = pj.left.filter(b => b.u === u).reduce((a, b) => a + hrsOf(b), 0);
-    return { planned, actual, slotsU, leftU, start, end };
+    /* 「別の内容」で、この単元を実施したコマ（他の科目への入れ替えなど）も実績に数える */
+    let swapped = 0;
+    pj.rows.forEach(r => {
+      if (r.kind !== "free" || !r.rec || r.rec.fu !== u) return;
+      swapped += r.hrs;
+      if (!start || r.date < start) start = r.date;
+      if (!end || r.date > end) end = r.date;
+    });
+    actual += swapped;
+    return { planned, actual, slotsU, leftU, start, end, swapped };
   }
 
   /* 画面で見せる最初の（これからの）計画ブロックの位置 */
