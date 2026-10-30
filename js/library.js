@@ -248,6 +248,15 @@
   }
   const md2 = d => { const x = new Date(d + "T00:00:00"); return (x.getMonth() + 1) + "/" + x.getDate(); };
   const pastKeyInput = (u, un) => '<label class="small" for="pk_' + u + '" style="margin-top:6px">過去の記録をさがす言葉（名前が違うときだけ。空なら単元名で自動）</label><input type="text" id="pk_' + u + '" data-act="un-pk" data-id="' + u + '" value="' + esc(un.pastKey || "") + '" placeholder="例：納得の構造">';
+  /* 科目の並び順（学年の順）。ここにない科目は、そのあとに出る */
+  const SUBJ_ORDER = ["現代の国語", "言語文化", "論理国語", "総合国語", "文学国語", "古典探究", "現代文特講", "国語演習"];
+  function subjOptions(entries, cur, subjOf, suffix) {
+    const groups = {};
+    entries.forEach(e => { const ss = subjOf(e); (ss.length ? ss : ["その他"]).forEach(x => { (groups[x] = groups[x] || []).push(e); }); });
+    const names = Object.keys(groups).sort((a, b) => { const ia = SUBJ_ORDER.indexOf(a), ib = SUBJ_ORDER.indexOf(b); return (ia < 0 ? (a === "その他" ? 999 : 100) : ia) - (ib < 0 ? (b === "その他" ? 999 : 100) : ib) || (a < b ? -1 : 1); });
+    return names.map(n => '<optgroup label="' + esc(n) + '">' + groups[n].map(e => '<option value="' + esc(e.key) + '"' + (e.key === cur ? " selected" : "") + ">" + esc(e.name) + esc(suffix(e)) + "</option>").join("") + "</optgroup>").join("");
+  }
+  const histSubjects = e => { const o = []; (e.terms || []).forEach(T => T.occ.forEach(c => { const x = J.subjectOf({ name: c.cls }); if (x && o.indexOf(x) < 0) o.push(x); })); return o; };
   /* ---------- 同じ単元を、学期・年度で並べて比べる ---------- */
   function termYear(id, name) { const m = /^(\d{4})/.exec(id || "") || /(\d{4})/.exec(name || ""); return m ? m[1] + "年度" : ""; }
   function cmpIndex() {
@@ -277,7 +286,7 @@
     if (!U.cmp || !idx.some(e => e.key === U.cmp)) U.cmp = idx[0].key;
     const cur = idx.find(e => e.key === U.cmp);
     let h = mseg + '<p class="small" style="margin:0 0 8px">同じ名前の単元を、学期・年度ごとに並べて見られます。いくつの学期にあるかが多い順に並んでいます。単元の名前が違うと別の単元として数えるので、名前をそろえておくと比べやすくなります。</p>';
-    h += '<div class="lbar"><select id="cmp_u" data-act="cmp-u" aria-label="単元を選ぶ" style="flex:1;min-width:0">' + idx.map(e => '<option value="' + esc(e.key) + '"' + (e.key === U.cmp ? " selected" : "") + ">" + esc(e.name) + "（" + e.terms.length + "学期：" + esc(e.terms.map(t => termYear(t.id, t.name)).filter((x, i, a) => a.indexOf(x) === i).join("・")) + "）</option>").join("") + "</select></div>";
+    h += '<div class="lbar"><select id="cmp_u" data-act="cmp-u" aria-label="単元を選ぶ" style="flex:1;min-width:0">' + subjOptions(idx, U.cmp, e => { const o = histSubjects(e), t = (A.textbooks || []).find(B => B.parts.some(P => P.units.some(u => normName(u.name) === e.key))); if (t && t.subject && o.indexOf(t.subject) < 0) o.push(t.subject); return o; }, e => "（" + e.terms.length + "学期：" + e.terms.map(t => termYear(t.id, t.name)).filter((x, i, a) => a.indexOf(x) === i).join("・") + "）") + "</select></div>";
     const part = t => /月分/.test(t.name), all = []; cur.terms.forEach(t => { if (!part(t)) t.occ.forEach(o => all.push(o.hrs)); });
     const avg = all.length ? Math.round(all.reduce((a, b) => a + b, 0) / all.length * 10) / 10 : 0;
     h += '<section class="panel p-soon"><header class="panel-h"><h2>' + esc(cur.name) + '</h2><span class="panel-n">' + cur.terms.length + "学期</span></header><div class=\"panel-b\">" +
@@ -298,7 +307,7 @@
       const start = x => { const ps = x.u.mats.concat(x.u.manabi ? [x.u.manabi] : [], x.u.extra || []).map(m => m.p).filter(Boolean); return ps.length ? Math.min.apply(null, ps) : null; };
       flat.forEach((x, i) => {
         const st = start(x), nx = flat.slice(i + 1).map(start).find(v => v);
-        out[normName(x.u.name)] = { book: B.book, part: x.P.part, no: x.u.no, u: x.u, pages: st && nx && nx > st ? nx - st : null };
+        out[normName(x.u.name)] = { subject: B.subject || "", book: B.book, part: x.P.part, no: x.u.no, u: x.u, pages: st && nx && nx > st ? nx - st : null };
       });
     });
     return out;
@@ -313,8 +322,8 @@
     const fresh = list.filter(e => !hist[e.key]);
     U.cmpSel = (U.cmpSel || []).filter(k => ents[k]);
     while (U.cmpSel.length < 3) U.cmpSel.push("");
-    const opt = (cur) => '<option value="">（選ばない）</option>' + (done.length ? '<optgroup label="これまでにやった単元">' + done.map(e => '<option value="' + esc(e.key) + '"' + (e.key === cur ? " selected" : "") + ">" + esc(e.name) + "</option>").join("") + "</optgroup>" : "") +
-      (fresh.length ? '<optgroup label="教科書の目次（まだやっていない）">' + fresh.map(e => '<option value="' + esc(e.key) + '"' + (e.key === cur ? " selected" : "") + ">" + esc(e.name) + "</option>").join("") + "</optgroup>" : "");
+    const subjOf = e => { const o = hist[e.key] ? histSubjects(hist[e.key]) : []; if (tb[e.key] && tb[e.key].subject && o.indexOf(tb[e.key].subject) < 0) o.push(tb[e.key].subject); return o; };
+    const opt = cur => '<option value="">（選ばない）</option>' + subjOptions(done.concat(fresh), cur, subjOf, e => hist[e.key] ? "（" + hist[e.key].terms.length + "学期）" : "（まだやっていない）");
     let h = '<p class="small" style="margin:0 0 8px">2つか3つの単元を選ぶと、教材・ページ数・これまでかかった時間などを横に並べます。これからどの単元をやるか決めるときに使ってください。</p><div class="cmpsel">' +
       [0, 1, 2].map(i => '<select data-act="cmp-s" data-i="' + i + '" aria-label="単元' + (i + 1) + '">' + opt(U.cmpSel[i]) + "</select>").join("") + "</div>";
     const sel = U.cmpSel.filter(Boolean);
