@@ -202,6 +202,50 @@
       '<div class="mxadd"><input type="text" id="xl_' + u + i + '" placeholder="リンクの名前（例：重要語句）" aria-label="リンクの名前"><input type="url" id="xu_' + u + i + '" placeholder="https://…" aria-label="リンクのアドレス"><button class="btn" data-act="mat-xadd" data-u="' + u + '" data-i="' + i + '">リンクを追加</button></div></div>';
   }
 
+  /* ---------- 過去の学期の同じ単元の実績（単元別タブに自動で出す） ---------- */
+  const normName = x => nfkc(x).replace(/[「」『』（）()・\s　]/g, "");
+  async function loadPast() {
+    if (A.past || A._pastLoading) return;
+    A._pastLoading = true;
+    const out = [];
+    try {
+      const idx = await (await fetch("data/index.json?t=" + Date.now(), { cache: "no-store" })).json();
+      for (const t of (idx.terms || [])) {
+        if (A.st && A.st.term.id === t.id) continue;
+        try {
+          const st = await (await fetch("data/" + t.file + "?t=" + Date.now(), { cache: "no-store" })).json();
+          ["rec", "off", "flags", "events", "units", "plans", "unitNotes"].forEach(k => { st[k] = st[k] || {}; });
+          st.classes.forEach(c => { st.plans[c.id] = st.plans[c.id] || []; });
+          J.migrateUnits(st); out.push({ name: t.name, st });
+        } catch (e) { /* 読めない学期は飛ばす */ }
+      }
+    } catch (e) { /* 一覧が読めない */ }
+    A.past = out; A._pastLoading = false;
+    if (A.ui.tab === "unit" && A.render) A.render();
+  }
+  function pastHtml(u) {
+    const un = A.st.units[u]; if (!un) return "";
+    const key = normName(un.pastKey || un.name);
+    let h = '<div class="prevbox pastbox"><b>過去の学期の同じ単元（自動）</b>';
+    if (!A.past) { loadPast(); return h + '<p class="small muted" style="margin:4px 0 0">読み込んでいます…</p></div>'; }
+    const rows = [];
+    A.past.forEach(P => Object.keys(P.st.units).forEach(pu => {
+      const n = normName(P.st.units[pu].name);
+      if (!key || !n || (n !== key && n.indexOf(key) < 0 && key.indexOf(n) < 0)) return;
+      P.st.classes.forEach(c => {
+        const x = J.unitStats(P.st, c, pu);
+        if (x.planned || x.actual) rows.push({ term: P.name, unit: P.st.units[pu].name, cls: c.name, hrs: x.actual || x.planned, st: x });
+      });
+    }));
+    if (!rows.length) return h + '<p class="small muted" style="margin:4px 0 0">同じ名前の単元は、過去の学期にはありません。名前が違うだけのときは、下の「過去の記録をさがす言葉」に、去年の単元名の一部を入れてください。</p>' + pastKeyInput(u, un) + "</div>";
+    const hrsAll = rows.map(r => r.hrs), avg = Math.round(hrsAll.reduce((a, b) => a + b, 0) / hrsAll.length * 10) / 10;
+    h += '<ul style="margin:6px 0 0;padding-left:18px">' + rows.map(r => "<li>" + esc(r.term) + "　" + esc(r.cls) + "（" + esc(r.unit) + "）：<b>" + r.hrs + "時間</b>" + (r.st.start ? '<span class="small muted">　' + md2(r.st.start) + "〜" + md2(r.st.end) + "</span>" : "") + "</li>").join("") + "</ul>" +
+      '<p class="small" style="margin:6px 0 0">クラスの平均は <b>' + avg + "時間</b>です。計画を立てるときの目安にしてください。</p>";
+    return h + pastKeyInput(u, un) + "</div>";
+  }
+  const md2 = d => { const x = new Date(d + "T00:00:00"); return (x.getMonth() + 1) + "/" + x.getDate(); };
+  const pastKeyInput = (u, un) => '<label class="small" for="pk_' + u + '" style="margin-top:6px">過去の記録をさがす言葉（名前が違うときだけ。空なら単元名で自動）</label><input type="text" id="pk_' + u + '" data-act="un-pk" data-id="' + u + '" value="' + esc(un.pastKey || "") + '" placeholder="例：納得の構造">';
+  A.views.past = pastHtml;
   A.views.lib = viewLib;
   A.views.libResults = results;
   A.views.matPicker = matPicker;

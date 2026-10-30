@@ -492,6 +492,7 @@
     else if (a === "un-items") { const u = A.st.units[t.dataset.id]; if (u) { u.items = v.split("\n").map(x => x.trim()).filter(Boolean); commit(); } }
     else if (a === "blk-h") { const b = blockById(t.dataset.id); if (b) { b.h = Number(v) || 1; A.ui.cellRefresh = true; commit(); } }
     else if (a === "un-subj") { const u = A.st.units[t.dataset.id]; if (u) { u.subj = v; commit(); } }
+    else if (a === "un-pk") { const u = A.st.units[t.dataset.id]; if (u) { if (v.trim()) u.pastKey = v.trim(); else delete u.pastKey; commit(); } }
     else if (a === "un-name") { const u = A.st.units[t.dataset.id]; if (u && v.trim()) { u.name = v.trim(); commit(); } }
     else if (a === "allot") { const u = A.st.units[t.dataset.u]; if (v === "") delete u.allot[t.dataset.c]; else u.allot[t.dataset.c] = Math.max(0, Number(v) || 0); commit(); }
     else if (a === "un") { A.st.unitNotes[t.dataset.id] = v; commit(); }
