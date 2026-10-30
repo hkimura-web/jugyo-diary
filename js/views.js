@@ -121,7 +121,7 @@
   }
 
 
-  /* 単元の教材（最大4つ）と、教科書本文・指導書・プリント1・プリント2へのリンク */
+  /* 単元の教材（最大6つ）と、教科書本文・指導書・プリント1・プリント2へのリンク */
   const MATF = [["d", "Googleドライブ"], ["t", "教科書"], ["g", "指導書"], ["p1", "ワークシート1"], ["p2", "ワークシート2"], ["p3", "ワークシート3"]];
   function matHtml(u) {
     const m = ((A.st.units[u] || {}).mats || []).filter(x => x && (x.n || (x.x && x.x.length) || MATF.some(f => x[f[0]])));
@@ -132,8 +132,8 @@
   }
   function matForm(u) {
     const un = A.st.units[u], m = un.mats || [];
-    let h = '<div class="csec" style="margin-top:14px">教材とリンク（教科書の教材を最大4つ。リンクは一覧からも開けます）</div>';
-    for (let i = 0; i < 4; i++) {
+    let h = '<div class="csec" style="margin-top:14px">教材とリンク（教科書の教材を最大6つ。リンクは一覧からも開けます）</div>';
+    for (let i = 0; i < 6; i++) {
       const x = m[i] || {};
       h += '<div class="matbox"><label class="small" for="mn_' + u + i + '">教材' + (i + 1) + "の名前</label>" +
         '<input type="text" id="mn_' + u + i + '" data-act="mat" data-u="' + u + '" data-i="' + i + '" data-f="n" value="' + esc(x.n || "") + '" placeholder="' + (i === 0 ? "例：羅生門" : "") + '">' +
@@ -361,7 +361,7 @@
       b += '</tbody></table></div>' + prevHtml(un) + (A.views.past ? A.views.past(u) : "") + '<div style="margin-top:12px"><button class="btn" data-act="flow-open" data-u="' + u + '">この単元の予定を各クラスの計画に入れる</button></div>' + matForm(u) + '<label class="small unitnote" for="ui_' + u + '">この単元の授業内容の予定（1行＝1コマ。一覧の画面で選んで使えます）</label><textarea id="ui_' + u + '" data-act="un-items" data-id="' + u + '" style="min-height:110px" placeholder="例：\n導入・語句の確認\n本文の読解①\n本文の読解②\nまとめ・小テスト">' + esc((un.items || []).join("\n")) + '</textarea><label class="small unitnote" for="un_' + u + '">学期末の振り返りメモ</label><textarea id="un_' + u + '" data-act="un" data-id="' + u + '" placeholder="うまくいった点、時間がかかった点、次回の工夫">' + esc(st.unitNotes[u] || "") + "</textarea>";
       h += panel("p-soon", esc(un.name), un.subj || "共通", b);
     });
-    return h + panel("p-ev", "単元を追加", "", '<div class="addrow" style="grid-template-columns:160px 1fr auto"><select id="newunit_s" aria-label="科目">' + ["", ...subjectList()].map(x => '<option value="' + esc(x) + '">' + esc(x || "共通") + "</option>").join("") + '</select><input type="text" id="newunit" aria-label="単元名" placeholder="単元名（例：羅生門）"><button class="btn on" data-act="addunit">追加</button></div>');
+    return h + panel("p-ev", "単元を追加", "", '<div class="addrow" style="grid-template-columns:160px 1fr auto"><select id="newunit_s" aria-label="科目">' + ["", ...subjectList()].map(x => '<option value="' + esc(x) + '">' + esc(x || "共通") + "</option>").join("") + '</select><input type="text" id="newunit" aria-label="単元名" placeholder="単元名（例：羅生門）"><button class="btn on" data-act="addunit">追加</button></div>' + (A.views.tbPicker ? A.views.tbPicker() : ""));
   }
 
   /* ---------- サマリー ---------- */

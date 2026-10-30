@@ -399,6 +399,17 @@
         const tx = $("addt").value.trim(); if (!tx) { toast("追加する内容を入れてください"); break; }
         A.st.plans[A.ui.cls].push({ id: "b" + A.ui.cls + "_" + Date.now().toString(36), u: $("addu").value, t: tx, h: Number($("addh").value) || 1 }); commit(); break;
       }
+      case "tb-add": {
+        const sel = $("tb_unit"); if (!sel || sel.value === "") { toast("教科書の単元を選んでください"); break; }
+        const tb = A.textbook, pi = Number(sel.value.split(":")[0]), ui = Number(sel.value.split(":")[1]), tu = tb && tb.parts[pi] && tb.parts[pi].units[ui];
+        if (!tu) break;
+        const nm = tu.name;
+        if (Object.keys(A.st.units).some(k => A.st.units[k].name === nm)) { toast("「" + nm + "」は、もう単元にあります"); break; }
+        const id = newUnit(nm, $("tb_subj").value), un = A.st.units[id];
+        un.mats = tu.mats.map(x => ({ n: x.n })).concat(tu.manabi ? [{ n: "学びを広げる：" + tu.manabi.n }] : []);
+        un.tb = tb.book + " " + tb.parts[pi].part + " " + tu.no;
+        commit(); toast("「" + nm + "」を追加しました（教材名も入っています）"); break;
+      }
       case "addunit": {
         const nm = $("newunit").value.trim(); if (!nm) { toast("単元名を入れてください"); break; }
         newUnit(nm, $("newunit_s").value); commit(); break;
@@ -439,7 +450,7 @@
       const f = t.dataset.f, i = Number(t.dataset.i), val = v.trim();
       if (f !== "n" && val && !/^https?:\/\//i.test(val)) { toast("https:// から始まるアドレスを入れてください"); return; }
       const m = u.mats = u.mats || [];
-      while (m.length < 4) m.push({});
+      while (m.length < 6) m.push({});
       if (val) m[i][f] = val; else delete m[i][f];
       while (m.length && !Object.keys(m[m.length - 1]).length) m.pop();
       if (!m.length) delete u.mats;
@@ -515,7 +526,7 @@
     else if (document.visibilityState === "visible") refreshLatest();
   });
 
-  A.render = render; A.toast = toast; A.commit = commit;
+  A.newUnit = newUnit; A.render = render; A.toast = toast; A.commit = commit;
 
   /* ---------- 起動 ---------- */
   (async function boot() {

@@ -27,6 +27,8 @@
   function normPortal(p) { p = p || {}; p.fav = Array.isArray(p.fav) ? p.fav : []; p.checklist = Array.isArray(p.checklist) ? p.checklist : defaultPortal().checklist; p.checklist.forEach(c => { c.done = c.done || {}; }); return p; }
   async function load() {
     try { const r = await fetch("library/links.json?t=" + Date.now(), { cache: "no-store" }); A.lib = r.ok ? await r.json() : { materials: [], general: [], missing: true }; } catch (e) { A.lib = { materials: [], general: [], missing: true }; }
+    try { const r = await fetch("library/textbook.json?t=" + Date.now(), { cache: "no-store" }); A.textbook = r.ok ? await r.json() : null; } catch (e) { A.textbook = null; }
+    if (A.ui.tab === "unit" && A.render) A.render();
     A._items = null;
     const s = S.getSettings(); let text = null; portal.token = !!(s.token && s.owner && s.repo);
     if (portal.token) { try { const r = await S.remoteGet(s, "data/portal.json"); text = r.text; portal.sha = r.sha; } catch (e) { text = null; } }
@@ -245,6 +247,16 @@
   }
   const md2 = d => { const x = new Date(d + "T00:00:00"); return (x.getMonth() + 1) + "/" + x.getDate(); };
   const pastKeyInput = (u, un) => '<label class="small" for="pk_' + u + '" style="margin-top:6px">過去の記録をさがす言葉（名前が違うときだけ。空なら単元名で自動）</label><input type="text" id="pk_' + u + '" data-act="un-pk" data-id="' + u + '" value="' + esc(un.pastKey || "") + '" placeholder="例：納得の構造">';
+  /* 教科書の目次から単元を追加する（単元別タブの「単元を追加」の下に出す） */
+  function tbPicker() {
+    const tb = A.textbook; if (!tb) return "";
+    let opts = '<option value="">教科書の単元を選ぶ…</option>';
+    tb.parts.forEach((P, pi) => { opts += '<optgroup label="' + esc(P.part) + '">' + P.units.map((u, ui) => '<option value="' + pi + ":" + ui + '">' + esc(P.part + "　" + u.no + "　" + u.name + "（" + u.mats.map(m => m.n).join("・") + "）") + "</option>").join("") + "</optgroup>"; });
+    return '<div class="addrow" style="grid-template-columns:1fr 160px auto;margin-top:8px"><select id="tb_unit" aria-label="教科書の単元">' + opts + '</select><select id="tb_subj" aria-label="科目"><option value="">共通</option>' + subjectNames().map(x => '<option value="' + esc(x) + '">' + esc(x) + "</option>").join("") + '</select><button class="btn on" data-act="tb-add">目次から追加</button></div>' +
+      '<p class="small muted" style="margin:4px 0 0">' + esc(tb.book) + "の目次です。単元名と教材名（筆者つきの一覧は資料タブの元データ）が自動で入ります。</p>";
+  }
+  const subjectNames = () => { const o = []; (A.st.classes || []).forEach(c => { const x = J.subjectOf(c); if (x && o.indexOf(x) < 0) o.push(x); }); return o; };
+  A.views.tbPicker = tbPicker;
   A.views.past = pastHtml;
   A.views.lib = viewLib;
   A.views.libResults = results;
@@ -254,7 +266,7 @@
 
   /* ---------- 操作 ---------- */
   function refreshLib() { const r = $("libres"); if (r) r.innerHTML = results(); }
-  function ensureMat(u, i) { const un = A.st.units[u]; if (!un) return null; const m = un.mats = un.mats || []; while (m.length < 4) m.push({}); return m[i]; }
+  function ensureMat(u, i) { const un = A.st.units[u]; if (!un) return null; const m = un.mats = un.mats || []; while (m.length < 6) m.push({}); return m[i]; }
   function trimMats(u) { const un = A.st.units[u], m = un.mats || []; while (m.length && !Object.keys(m[m.length - 1]).length) m.pop(); if (!m.length) delete un.mats; }
 
   document.addEventListener("click", e => {
