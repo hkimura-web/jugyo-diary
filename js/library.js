@@ -271,10 +271,12 @@
   function cmpView() {
     if (!A.past) { loadPast(); return '<p class="note">過去の学期を読み込んでいます…</p>'; }
     const idx = cmpIndex(), U = A.ui.lib;
-    if (!idx.length) return '<p class="note">比べられる単元がまだありません。</p>';
+    const mseg = '<div class="seg" style="margin-bottom:10px"><button data-act="cmp-mode" data-v="same" aria-pressed="' + (U.cmpMode !== "multi") + '">同じ単元を、学期で比べる</button><button data-act="cmp-mode" data-v="multi" aria-pressed="' + (U.cmpMode === "multi") + '">違う単元を、横に並べて比べる</button></div>';
+    if (U.cmpMode === "multi") return mseg + cmpMulti(idx);
+    if (!idx.length) return mseg + '<p class="note">比べられる単元がまだありません。</p>';
     if (!U.cmp || !idx.some(e => e.key === U.cmp)) U.cmp = idx[0].key;
     const cur = idx.find(e => e.key === U.cmp);
-    let h = '<p class="small" style="margin:0 0 8px">同じ名前の単元を、学期・年度ごとに並べて見られます。いくつの学期にあるかが多い順に並んでいます。単元の名前が違うと別の単元として数えるので、名前をそろえておくと比べやすくなります。</p>';
+    let h = mseg + '<p class="small" style="margin:0 0 8px">同じ名前の単元を、学期・年度ごとに並べて見られます。いくつの学期にあるかが多い順に並んでいます。単元の名前が違うと別の単元として数えるので、名前をそろえておくと比べやすくなります。</p>';
     h += '<div class="lbar"><select id="cmp_u" data-act="cmp-u" aria-label="単元を選ぶ" style="flex:1;min-width:0">' + idx.map(e => '<option value="' + esc(e.key) + '"' + (e.key === U.cmp ? " selected" : "") + ">" + esc(e.name) + "（" + e.terms.length + "学期：" + esc(e.terms.map(t => termYear(t.id, t.name)).filter((x, i, a) => a.indexOf(x) === i).join("・")) + "）</option>").join("") + "</select></div>";
     const part = t => /月分/.test(t.name), all = []; cur.terms.forEach(t => { if (!part(t)) t.occ.forEach(o => all.push(o.hrs)); });
     const avg = all.length ? Math.round(all.reduce((a, b) => a + b, 0) / all.length * 10) / 10 : 0;
@@ -286,6 +288,59 @@
     h += '<div class="cmpgrid">' + cur.terms.map(t => '<section class="cmpcol"><h3>' + esc(t.name) + (t.cur ? ' <span class="small muted">（今学期）</span>' : "") + "</h3>" +
       t.occ.map(o => '<details class="lsec"' + (cur.terms.length <= 2 && t.occ.length === 1 ? " open" : "") + "><summary>" + esc(o.cls) + ' <span class="small muted">' + o.hrs + "時間・" + o.rows.length + "コマ</span></summary>" +
         '<ol class="cmpl">' + o.rows.map(r => '<li><span class="cd">' + md2(r.date) + '</span><span class="ct">' + esc(r.text) + "</span></li>").join("") + "</ol></details>").join("") + "</section>").join("") + "</div>";
+    return h;
+  }
+  /* ---------- 違う単元を2〜3つ、横に並べて比べる（これからやる単元を選ぶとき用） ---------- */
+  function tbIndex() {
+    const out = {};
+    (A.textbooks || []).forEach(B => {
+      const flat = []; B.parts.forEach(P => P.units.forEach(u => flat.push({ B, P, u })));
+      const start = x => { const ps = x.u.mats.concat(x.u.manabi ? [x.u.manabi] : [], x.u.extra || []).map(m => m.p).filter(Boolean); return ps.length ? Math.min.apply(null, ps) : null; };
+      flat.forEach((x, i) => {
+        const st = start(x), nx = flat.slice(i + 1).map(start).find(v => v);
+        out[normName(x.u.name)] = { book: B.book, part: x.P.part, no: x.u.no, u: x.u, pages: st && nx && nx > st ? nx - st : null };
+      });
+    });
+    return out;
+  }
+  function cmpMulti(idx) {
+    const U = A.ui.lib, tb = tbIndex(), hist = {}; idx.forEach(e => { hist[e.key] = e; });
+    const ents = {};
+    Object.keys(hist).forEach(k => { ents[k] = { key: k, name: hist[k].name }; });
+    Object.keys(tb).forEach(k => { if (!ents[k]) ents[k] = { key: k, name: tb[k].u.name }; });
+    const list = Object.keys(ents).map(k => ents[k]);
+    const done = list.filter(e => hist[e.key]).sort((a, b) => hist[b.key].terms.length - hist[a.key].terms.length || (a.name < b.name ? -1 : 1));
+    const fresh = list.filter(e => !hist[e.key]);
+    U.cmpSel = (U.cmpSel || []).filter(k => ents[k]);
+    while (U.cmpSel.length < 3) U.cmpSel.push("");
+    const opt = (cur) => '<option value="">（選ばない）</option>' + (done.length ? '<optgroup label="これまでにやった単元">' + done.map(e => '<option value="' + esc(e.key) + '"' + (e.key === cur ? " selected" : "") + ">" + esc(e.name) + "</option>").join("") + "</optgroup>" : "") +
+      (fresh.length ? '<optgroup label="教科書の目次（まだやっていない）">' + fresh.map(e => '<option value="' + esc(e.key) + '"' + (e.key === cur ? " selected" : "") + ">" + esc(e.name) + "</option>").join("") + "</optgroup>" : "");
+    let h = '<p class="small" style="margin:0 0 8px">2つか3つの単元を選ぶと、教材・ページ数・これまでかかった時間などを横に並べます。これからどの単元をやるか決めるときに使ってください。</p><div class="cmpsel">' +
+      [0, 1, 2].map(i => '<select data-act="cmp-s" data-i="' + i + '" aria-label="単元' + (i + 1) + '">' + opt(U.cmpSel[i]) + "</select>").join("") + "</div>";
+    const sel = U.cmpSel.filter(Boolean);
+    if (sel.length < 2) return h + '<p class="note">単元を2つ以上選んでください。</p>';
+    const part = t => /月分/.test(t.name);
+    const cols = sel.map(k => {
+      const t = tb[k], e = hist[k], hrs = [], terms = [];
+      if (e) e.terms.forEach(T => { if (!part(T)) T.occ.forEach(o => hrs.push(o.hrs)); if (terms.indexOf(T.name) < 0) terms.push(T.name); });
+      return { k, name: ents[k].name, t, e, hrs, terms };
+    });
+    const row = (label, f) => "<tr><th scope=\"row\">" + label + "</th>" + cols.map(c => "<td>" + (f(c) || '<span class="muted">−</span>') + "</td>").join("") + "</tr>";
+    const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 10) / 10 : null;
+    h += '<div class="tscroll"><table class="tbl cmptbl"><thead><tr><th></th>' + cols.map(c => "<th>" + esc(c.name) + "</th>").join("") + "</tr></thead><tbody>" +
+      row("教科書", c => c.t ? esc(c.t.book) + "<br>" + esc(c.t.part + (c.t.no ? " " + c.t.no : "")) : "") +
+      row("領域", c => c.t ? esc(c.t.u.mode || "") : "") +
+      row("教材（筆者・ページ）", c => c.t ? "<ul class=\"cmpul\">" + c.t.u.mats.map(m => "<li>" + esc(m.n) + '<span class="small muted">' + (m.by ? "　" + esc(m.by) : "") + (m.p ? "　p." + m.p : "") + "</span></li>").join("") + "</ul>" : (c.e && c.e.mats.length ? esc(c.e.mats.map(m => m.n).join("／")) : "")) +
+      row("学びを広げる・ズームアップ", c => c.t ? [c.t.u.manabi ? "学びを広げる：" + esc(c.t.u.manabi.n) : ""].concat((c.t.u.extra || []).map(x => esc(x.k + "：" + x.n))).filter(Boolean).join("<br>") : "") +
+      row("教科書のページ数", c => c.t && c.t.pages ? "約" + c.t.pages + "ページ" : "") +
+      row("教材の数", c => c.t ? c.t.u.mats.length + "つ" : (c.e && c.e.mats.length ? c.e.mats.length + "つ" : "")) +
+      row("これまでにやった回数", c => c.e ? c.terms.length + "学期（" + esc(c.terms.map(n => n.replace(/（.*）/, "")).join("、")) + "）" : "まだやっていない") +
+      row("かかった時間（平均）", c => avg(c.hrs) != null ? "<b>" + avg(c.hrs) + "時間</b>" : "") +
+      row("かかった時間（幅）", c => c.hrs.length ? Math.min.apply(null, c.hrs) + "〜" + Math.max.apply(null, c.hrs) + "時間" : "") +
+      row("クラスごとの実績", c => c.e ? c.e.terms.map(T => T.occ.map(o => '<div class="small">' + esc(T.name.replace(/（.*）/, "")) + "　" + esc(o.cls) + "：" + o.hrs + "時間" + (part(T) ? "（一部の月）" : "") + "</div>").join("")).join("") : "") +
+      row("今学期（2026年度）", c => { const T = c.e && c.e.terms.find(x => x.cur); return T ? T.occ.map(o => '<div class="small">' + esc(o.cls) + "：計画" + o.planned + "・実施" + o.actual + "時間</div>").join("") : ""; }) +
+      row("過去の授業の流れ（例）", c => { const T = c.e && c.e.terms.filter(x => !x.cur).slice(-1)[0], o = T && T.occ[0]; return o ? '<details><summary class="small">' + esc(T.name.replace(/（.*）/, "") + "　" + o.cls) + "（" + o.rows.length + "コマ）</summary><ol class=\"cmpl\">" + o.rows.map(r => '<li><span class="cd">' + md2(r.date) + '</span><span class="ct">' + esc(r.text) + "</span></li>").join("") + "</ol></details>" : ""; }) +
+      "</tbody></table></div>";
     return h;
   }
   /* 教科書の目次から単元を追加する（単元別タブの「単元を追加」の下に出す） */
@@ -315,6 +370,7 @@
     const a = t.dataset.act, id = t.dataset.id;
     switch (a) {
       case "lib-mode": A.ui.lib.mode = t.dataset.v; A.render(); break;
+      case "cmp-mode": A.ui.lib.cmpMode = t.dataset.v; A.render(); break;
       case "lib-clear": Object.assign(A.ui.lib, { q: "", kind: "", sec: "", year: "", favOnly: false }); A.render(); break;
       case "lib-fav": { const u = t.dataset.u, i = A.portal.fav.indexOf(u); if (i >= 0) A.portal.fav.splice(i, 1); else A.portal.fav.push(u); pcommit(); A.render(); break; }
       case "ck-del": { const c = A.portal.checklist; const i = c.findIndex(x => x.id === id); if (i >= 0 && root.confirm("「" + c[i].text + "」を消しますか？")) { c.splice(i, 1); pcommit(); A.render(); } break; }
@@ -337,6 +393,7 @@
     const t = e.target, a = t.dataset && t.dataset.act, v = t.value; if (!a) return;
     if (a === "lib-f") { const f = t.dataset.f; if (f === "fav") A.ui.lib.favOnly = t.checked; else A.ui.lib[f] = v; refreshLib(); return; }
     if (a === "cmp-u") { A.ui.lib.cmp = v; A.render(); return; }
+    if (a === "cmp-s") { (A.ui.lib.cmpSel = A.ui.lib.cmpSel || ["", "", ""])[Number(t.dataset.i)] = v; A.render(); return; }
     if (a === "ck-year") { A.ui.lib.ckYear = v; A.render(); return; }
     const ck = id => A.portal.checklist.find(x => x.id === id);
     if (a === "ck-done") { const c = ck(t.dataset.id); if (c) { if (t.checked) c.done[A.ui.lib.ckYear] = true; else delete c.done[A.ui.lib.ckYear]; pcommit(); A.render(); } return; }
