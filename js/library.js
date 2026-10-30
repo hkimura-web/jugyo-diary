@@ -160,9 +160,10 @@
   /* ---------- 画面 ---------- */
   function viewLib() {
     const U = A.ui.lib;
-    let h = '<div class="seg" style="margin-bottom:10px"><button data-act="lib-mode" data-v="search" aria-pressed="' + (U.mode === "search") + '">資料をさがす</button><button data-act="lib-mode" data-v="check" aria-pressed="' + (U.mode === "check") + '">準備チェックリスト</button></div>';
+    let h = '<div class="seg" style="margin-bottom:10px"><button data-act="lib-mode" data-v="search" aria-pressed="' + (U.mode === "search") + '">資料をさがす</button><button data-act="lib-mode" data-v="check" aria-pressed="' + (U.mode === "check") + '">準備チェックリスト</button><button data-act="lib-mode" data-v="cmp" aria-pressed="' + (U.mode === "cmp") + '">単元を年度で比べる</button></div>';
     if (!A.portal) return h + '<p class="note">読み込んでいます…</p>';
     if (U.mode === "check") return h + checklist();
+    if (U.mode === "cmp") return h + cmpView();
     const L = A.lib || { materials: [], general: [] };
     const secs = [], yrs = []; L.materials.forEach(m => { if (secs.indexOf(m.section) < 0) secs.push(m.section); }); L.general.forEach(g => { if (g.y && yrs.indexOf(g.y) < 0) yrs.push(g.y); });
     yrs.sort().reverse();
@@ -223,7 +224,7 @@
       }
     } catch (e) { /* 一覧が読めない */ }
     A.past = out; A._pastLoading = false;
-    if (A.ui.tab === "unit" && A.render) A.render();
+    if ((A.ui.tab === "unit" || (A.ui.tab === "lib" && A.ui.lib.mode === "cmp")) && A.render) A.render();
   }
   function pastHtml(u) {
     const un = A.st.units[u]; if (!un) return "";
@@ -247,6 +248,46 @@
   }
   const md2 = d => { const x = new Date(d + "T00:00:00"); return (x.getMonth() + 1) + "/" + x.getDate(); };
   const pastKeyInput = (u, un) => '<label class="small" for="pk_' + u + '" style="margin-top:6px">過去の記録をさがす言葉（名前が違うときだけ。空なら単元名で自動）</label><input type="text" id="pk_' + u + '" data-act="un-pk" data-id="' + u + '" value="' + esc(un.pastKey || "") + '" placeholder="例：納得の構造">';
+  /* ---------- 同じ単元を、学期・年度で並べて比べる ---------- */
+  function termYear(id, name) { const m = /^(\d{4})/.exec(id || "") || /(\d{4})/.exec(name || ""); return m ? m[1] + "年度" : ""; }
+  function cmpIndex() {
+    const terms = (A.past || []).map(P => ({ id: P.st.term.id, name: P.name, st: P.st })).concat([{ id: A.st.term.id, name: A.st.term.name, st: A.st, cur: true }]);
+    const map = {};
+    terms.forEach(T => Object.keys(T.st.units).forEach(u => {
+      const un = T.st.units[u], key = normName(un.name); if (!key) return;
+      const occ = [];
+      T.st.classes.forEach(c => {
+        const x = J.unitStats(T.st, c, u); if (!(x.planned || x.actual)) return;
+        const rows = []; J.project(T.st, c).rows.forEach(r => r.blocks.forEach(b => { if (b.u === u) rows.push({ date: r.date, text: b.t, done: r.kind === "done" || r.kind === "part" }); }));
+        occ.push({ cls: c.name, hrs: x.actual || x.planned, planned: x.planned, actual: x.actual, start: x.start, end: x.end, rows });
+      });
+      if (!occ.length) return;
+      const e = map[key] = map[key] || { key, name: un.name, mats: un.mats || [], tb: un.tb || "", terms: [] };
+      if (!e.mats.length && (un.mats || []).length) { e.mats = un.mats; e.tb = un.tb || e.tb; }
+      e.terms.push({ id: T.id, name: T.name, cur: !!T.cur, occ });
+    }));
+    return Object.keys(map).map(k => map[k]).sort((x, y) => y.terms.length - x.terms.length || (x.name < y.name ? -1 : 1));
+  }
+  function cmpView() {
+    if (!A.past) { loadPast(); return '<p class="note">過去の学期を読み込んでいます…</p>'; }
+    const idx = cmpIndex(), U = A.ui.lib;
+    if (!idx.length) return '<p class="note">比べられる単元がまだありません。</p>';
+    if (!U.cmp || !idx.some(e => e.key === U.cmp)) U.cmp = idx[0].key;
+    const cur = idx.find(e => e.key === U.cmp);
+    let h = '<p class="small" style="margin:0 0 8px">同じ名前の単元を、学期・年度ごとに並べて見られます。いくつの学期にあるかが多い順に並んでいます。単元の名前が違うと別の単元として数えるので、名前をそろえておくと比べやすくなります。</p>';
+    h += '<div class="lbar"><select id="cmp_u" data-act="cmp-u" aria-label="単元を選ぶ" style="flex:1;min-width:0">' + idx.map(e => '<option value="' + esc(e.key) + '"' + (e.key === U.cmp ? " selected" : "") + ">" + esc(e.name) + "（" + e.terms.length + "学期：" + esc(e.terms.map(t => termYear(t.id, t.name)).filter((x, i, a) => a.indexOf(x) === i).join("・")) + "）</option>").join("") + "</select></div>";
+    const part = t => /月分/.test(t.name), all = []; cur.terms.forEach(t => { if (!part(t)) t.occ.forEach(o => all.push(o.hrs)); });
+    const avg = all.length ? Math.round(all.reduce((a, b) => a + b, 0) / all.length * 10) / 10 : 0;
+    h += '<section class="panel p-soon"><header class="panel-h"><h2>' + esc(cur.name) + '</h2><span class="panel-n">' + cur.terms.length + "学期</span></header><div class=\"panel-b\">" +
+      (cur.mats.length ? '<p class="small" style="margin:0 0 6px"><b>教材：</b>' + esc(cur.mats.map(m => m.n).filter(Boolean).join("　／　")) + (cur.tb ? '<span class="muted">　（' + esc(cur.tb) + "）</span>" : "") + "</p>" : "") +
+      '<div class="tscroll"><table class="tbl"><thead><tr><th>学期</th><th>クラス</th><th>かけた時間</th><th>期間</th></tr></thead><tbody>' +
+      cur.terms.map(t => t.occ.map(o => "<tr><td>" + esc(t.name) + (t.cur ? ' <span class="small muted">（今学期）</span>' : "") + (part(t) ? ' <span class="small" style="color:var(--part)">※一部の月だけの記録</span>' : "") + "</td><td>" + esc(o.cls) + "</td><td><b>" + o.hrs + "時間</b>" + (o.actual !== o.planned && o.planned ? '<span class="small muted">（計画 ' + o.planned + "）</span>" : "") + "</td><td>" + (o.start ? md2(o.start) + "〜" + md2(o.end) : "−") + "</td></tr>").join("")).join("") +
+      '</tbody></table></div><p class="small" style="margin:6px 0 0">クラスの平均は <b>' + avg + "時間</b>です" + (cur.terms.some(part) ? "（一部の月だけの記録の学期は、平均に入れていません）" : "") + "。</p></div></section>";
+    h += '<div class="cmpgrid">' + cur.terms.map(t => '<section class="cmpcol"><h3>' + esc(t.name) + (t.cur ? ' <span class="small muted">（今学期）</span>' : "") + "</h3>" +
+      t.occ.map(o => '<details class="lsec"' + (cur.terms.length <= 2 && t.occ.length === 1 ? " open" : "") + "><summary>" + esc(o.cls) + ' <span class="small muted">' + o.hrs + "時間・" + o.rows.length + "コマ</span></summary>" +
+        '<ol class="cmpl">' + o.rows.map(r => '<li><span class="cd">' + md2(r.date) + '</span><span class="ct">' + esc(r.text) + "</span></li>").join("") + "</ol></details>").join("") + "</section>").join("") + "</div>";
+    return h;
+  }
   /* 教科書の目次から単元を追加する（単元別タブの「単元を追加」の下に出す） */
   function tbPicker() {
     const books = A.textbooks; if (!books || !books.length) return "";
@@ -295,6 +336,7 @@
   document.addEventListener("change", e => {
     const t = e.target, a = t.dataset && t.dataset.act, v = t.value; if (!a) return;
     if (a === "lib-f") { const f = t.dataset.f; if (f === "fav") A.ui.lib.favOnly = t.checked; else A.ui.lib[f] = v; refreshLib(); return; }
+    if (a === "cmp-u") { A.ui.lib.cmp = v; A.render(); return; }
     if (a === "ck-year") { A.ui.lib.ckYear = v; A.render(); return; }
     const ck = id => A.portal.checklist.find(x => x.id === id);
     if (a === "ck-done") { const c = ck(t.dataset.id); if (c) { if (t.checked) c.done[A.ui.lib.ckYear] = true; else delete c.done[A.ui.lib.ckYear]; pcommit(); A.render(); } return; }
