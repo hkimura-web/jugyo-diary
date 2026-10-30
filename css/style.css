@@ -460,3 +460,7 @@ a.lk.k-0{color:var(--gen-ink)} a.lk.k-1{color:var(--lang-ink);font-weight:700}
 .mxadd input{font-size:13px;padding:5px 8px}
 @media (max-width:640px){.tab span{font-size:12px}.mxadd{grid-template-columns:1fr}}
 .slot>.gmat{margin:0;padding:4px 12px 8px 12px;font-size:12px}
+/* 授業の記録（検索結果） */
+.hrow{display:flex;gap:10px;align-items:flex-start}
+.hrow .hd{flex:0 0 64px;font-size:13px;line-height:1.3}
+.hrow .lt2{font-size:13px;line-height:1.55;margin-top:2px}

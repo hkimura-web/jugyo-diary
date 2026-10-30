@@ -74,6 +74,52 @@
     out.forEach(x => { x.hay = nfkc([x.t, x.card, x.sec, x.kind, x.y, x.sheet, x.note, x.cat].filter(Boolean).join(" ")); });
     return (A._items = out);
   }
+  /* ---------- 過去の授業の記録（全学期）を検索できるようにする ---------- */
+  function histRows(st, tname) {
+    const out = [];
+    (st.classes || []).forEach(c => {
+      try {
+        J.project(st, c).rows.forEach(r => {
+          if (!r.blocks || !r.blocks.length) return;
+          const rec = r.rec || {}, units = [];
+          r.blocks.forEach(b => { const n = st.units[b.u] ? st.units[b.u].name : ""; if (n && units.indexOf(n) < 0) units.push(n); });
+          const text = r.blocks.map(b => b.t).filter(Boolean).join(" ／ ");
+          out.push({ date: r.date, term: tname, cls: c.name, unit: units.join("・"), text, memo: rec.n || "", st: rec.s === "done" ? "実施" : rec.s === "part" ? "途中" : "予定",
+            hay: nfkc([tname, c.name, units.join(" "), text, rec.n || "", r.date].join(" ")) });
+        });
+      } catch (e) { /* 壊れた学期は飛ばす */ }
+    });
+    return out;
+  }
+  async function loadHist() {
+    if (A.hist || A._histLoading) return;
+    A._histLoading = true;
+    const rows = [];
+    try {
+      const idx = await (await fetch("data/index.json?t=" + Date.now(), { cache: "no-store" })).json();
+      for (const t of (idx.terms || [])) {
+        try {
+          let st;
+          if (A.st && A.st.term.id === t.id) st = A.st;
+          else { st = await (await fetch("data/" + t.file + "?t=" + Date.now(), { cache: "no-store" })).json(); ["rec", "off", "flags", "events", "units", "plans", "unitNotes"].forEach(k => { st[k] = st[k] || {}; }); st.classes.forEach(c => { st.plans[c.id] = st.plans[c.id] || []; }); J.migrateUnits(st); }
+          histRows(st, t.name).forEach(x => rows.push(x));
+        } catch (e) { /* この学期は読めなかった */ }
+      }
+    } catch (e) { /* 一覧が読めない */ }
+    rows.sort((x, y) => x.date < y.date ? 1 : x.date > y.date ? -1 : 0);
+    A.hist = rows; A._histLoading = false;
+    refreshLib();
+  }
+  const WD = "日月火水木金土";
+  function histPanel(toks) {
+    if (!A.hist) { loadHist(); return '<p class="note">過去の授業の記録を読み込んでいます…</p>'; }
+    const hit = A.hist.filter(x => toks.every(t => x.hay.indexOf(t) >= 0));
+    if (!hit.length) return "";
+    const show = hit.slice(0, 100);
+    return '<section class="panel p-soon" style="margin-top:12px"><header class="panel-h"><h2>授業の記録（これまでの授業）</h2><span class="panel-n">' + hit.length + "件</span></header><div class=\"panel-b\">" +
+      show.map(x => { const d = new Date(x.date + "T00:00:00"); return '<div class="lrow hrow"><div class="hd"><b>' + (d.getMonth() + 1) + "/" + d.getDate() + "</b>（" + WD[d.getDay()] + ") <span class=\"small muted\">" + d.getFullYear() + '</span></div><div class="lmain"><div class="ltags">' + tag(x.term, "t-year") + tag(x.cls, "t-card") + tag(x.unit, "t-sec") + tag(x.st, "t-kind") + '</div><div class="lt2">' + esc(x.text) + "</div>" + (x.memo ? '<div class="lnote">' + esc(x.memo) + "</div>" : "") + "</div></div>"; }).join("") +
+      (hit.length > show.length ? '<p class="small muted">先頭の' + show.length + "件を表示しています。言葉を足して絞り込めます。</p>" : "") + "</div></section>";
+  }
   const isFav = u => A.portal.fav.indexOf(u) >= 0;
   const star = u => '<button class="star' + (isFav(u) ? " on" : "") + '" data-act="lib-fav" data-u="' + esc(u) + '" aria-pressed="' + isFav(u) + '" title="よく使う（★）に入れる／外す">' + (isFav(u) ? "★" : "☆") + "</button>";
   const tag = (t, cls) => t ? '<span class="tg ' + (cls || "") + '">' + esc(t) + "</span>" : "";
@@ -105,7 +151,8 @@
     }
     const list = items().filter(x => toks.every(t => x.hay.indexOf(t) >= 0) && (!U.kind || x.kind === U.kind) && (!U.sec || x.sec === U.sec) && (!U.year || x.y === U.year) && (!U.favOnly || isFav(x.u)));
     const uniq = list.filter((x, i, ar) => ar.findIndex(y => y.u === x.u && y.t === x.t) === i), show = uniq.slice(0, 150);
-    return '<p class="note" style="margin:0 0 6px"><b>' + uniq.length + "件</b>見つかりました" + (uniq.length > show.length ? "（先頭の" + show.length + "件を表示。言葉を足して絞り込めます）" : "") + "</p>" + (show.length ? show.map(row).join("") : "");
+    const hist = toks.length && !U.kind && !U.sec && !U.year && !U.favOnly ? histPanel(toks) : "";
+    return '<p class="note" style="margin:0 0 6px"><b>' + uniq.length + "件</b>見つかりました" + (uniq.length > show.length ? "（先頭の" + show.length + "件を表示。言葉を足して絞り込めます）" : "") + "</p>" + (show.length ? show.map(row).join("") : "") + hist;
   }
 
   /* ---------- 画面 ---------- */
@@ -121,7 +168,7 @@
     h += '<div class="lbar"><input type="search" id="lib_q" class="lq" data-act="lib-q" placeholder="資料をさがす（例：水の東西　漢字　シラバス　羅生門）" value="' + esc(U.q) + '" autocomplete="off">' +
       '<div class="lfilters">' + sel("kind", U.kind, KINDS, "すべての種類") + sel("sec", U.sec, secs, "すべての教材区分") + sel("year", U.year, yrs, "すべての年度") +
       '<label class="lfav"><input type="checkbox" data-act="lib-f" data-f="fav"' + (U.favOnly ? " checked" : "") + '> ★だけ</label><button class="btn" data-act="lib-clear">クリア</button></div></div>';
-    h += '<p class="small" style="margin:0 0 8px">言葉を空白で区切ると、すべてを含む資料だけに絞れます。★を押すと、「よく使う」としてこの画面の一番上に出ます。資料の元になったスプレッドシートは、そのまま残します（リンク一覧：' + esc((A.lib && A.lib.built) || "—") + ' 作成）。</p>';
+    h += '<p class="small" style="margin:0 0 8px">言葉を空白で区切ると、すべてを含む資料だけに絞れます。過去の授業の記録（去年の授業など）も、同じ検索で見つかります。★を押すと、「よく使う」としてこの画面の一番上に出ます。資料の元になったスプレッドシートは、そのまま残します（リンク一覧：' + esc((A.lib && A.lib.built) || "—") + ' 作成）。</p>';
     return h + '<div id="libres">' + results() + "</div>";
   }
   function checklist() {
