@@ -12,7 +12,7 @@
   const plain = s => String(s).replace(/\s*\/\s*/g, " / ");
   const clip = (s, n) => { s = plain(s); return s.length > n ? s.slice(0, n) + "…" : s; };
   const cur = () => A.st.classes.find(c => c.id === A.ui.cls) || A.st.classes[0];
-  const perTxt = r => (r.periods && r.periods.length ? r.periods.join("・") + "時間目" : "");
+  const perTxt = r => { const ps = (r.periods || []).filter(Boolean); return ps.length ? ps.join("・") + "時間目" : ""; };
   /* 「別の内容」のコマ：他の科目に入れ替えたとき（例：現代の国語の時間に言語文化をやった）の科目・単元・内容 */
   function freeInfo(r) {
     const cid = r.key.split("|")[0], c = A.st.classes.find(x => x.id === cid), own = c ? J.subjectOf(c) : "";

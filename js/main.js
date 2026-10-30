@@ -401,13 +401,13 @@
       }
       case "tb-add": {
         const sel = $("tb_unit"); if (!sel || sel.value === "") { toast("教科書の単元を選んでください"); break; }
-        const tb = A.textbook, pi = Number(sel.value.split(":")[0]), ui = Number(sel.value.split(":")[1]), tu = tb && tb.parts[pi] && tb.parts[pi].units[ui];
+        const ix = sel.value.split(":").map(Number), bk = A.textbooks && A.textbooks[ix[0]], pt = bk && bk.parts[ix[1]], tu = pt && pt.units[ix[2]];
         if (!tu) break;
         const nm = tu.name;
         if (Object.keys(A.st.units).some(k => A.st.units[k].name === nm)) { toast("「" + nm + "」は、もう単元にあります"); break; }
         const id = newUnit(nm, $("tb_subj").value), un = A.st.units[id];
-        un.mats = tu.mats.map(x => ({ n: x.n })).concat(tu.manabi ? [{ n: "学びを広げる：" + tu.manabi.n }] : []);
-        un.tb = tb.book + " " + tb.parts[pi].part + " " + tu.no;
+        un.mats = tu.mats.slice(0, 6).map(x => ({ n: x.n })).concat(tu.manabi && tu.mats.length < 6 ? [{ n: "学びを広げる：" + tu.manabi.n }] : []);
+        un.tb = bk.book + " " + pt.part + (tu.no ? " " + tu.no : "");
         commit(); toast("「" + nm + "」を追加しました（教材名も入っています）"); break;
       }
       case "addunit": {
