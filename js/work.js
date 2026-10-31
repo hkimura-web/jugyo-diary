@@ -163,7 +163,7 @@
   const TO = ["d5", "d3", "d15", "d4", "d16", "d17"];
   function tipsH() {
     const f = x => { const i = TO.indexOf(x.id); return i < 0 ? 99 : i; }, l = W.S.docs.filter(d => d.tip).sort((a, b) => f(a) - f(b));
-    return '<section class="panel p-ev"><header class="panel-h"><h2>重要Tips</h2><span class="panel-n">押すとすぐ説明が開きます</span></header><div class="panel-b">' +
+    return '<section class="panel p-work"><header class="panel-h"><h2>重要Tips</h2><span class="panel-n">押すとすぐ説明が開きます</span></header><div class="panel-b">' +
       l.map(d => '<button class="wtp" data-wact="tip" data-id="' + d.id + '">' + esc(d.t) + "</button>").join("") + '<button class="wtp add" data-wact="tip-add">＋ 追加</button></div></section>';
   }
   const panel = (cls, title, count, body) => '<section class="panel ' + cls + '"><header class="panel-h"><h2>' + title + "</h2>" + (count ? '<span class="panel-n">' + count + "</span>" : "") + '</header><div class="panel-b">' + body + "</div></section>";
@@ -264,13 +264,13 @@
     const due = dueList(), mc = monthCounts();
     if (!due.length && !mc.cur && !mc.carry) return "";
     let b = due.length ? due.map(x => item(x.t, x.m, dueTag(x))).join("") : '<p class="note" style="margin:0 0 6px">今日が期限の仕事はありません。</p>';
-    if (mc.cur || mc.carry) b += '<p class="note" style="margin:8px 0 0">' + (mc.cur ? mc.m0 + "月の仕事（日付なし）：未完了 " + mc.cur + "件" : "") + (mc.cur && mc.carry ? " ／ " : "") + (mc.carry ? "繰越 " + mc.carry + "件" : "") + ' <button class="btn sm" data-wact="go-home">仕事タブを開く</button></p>';
+    if (mc.cur || mc.carry) b += '<p class="note" style="margin:8px 0 0">' + (mc.cur ? mc.m0 + "月の仕事（日付なし）：未完了 " + mc.cur + "件" : "") + (mc.cur && mc.carry ? " ／ " : "") + (mc.carry ? "繰越 " + mc.carry + "件" : "") + ' <button class="btn sm wbtn" data-wact="go-home">仕事タブを開く</button></p>';
     return panel("p-work", "今日の仕事", due.length ? due.length + "件" : "", b);
   };
   /* 「記録待ち」と同じお知らせ画面に出す、期限が近い仕事 */
   A.work.remHtml = function () {
     const due = dueList(); if (!due.length) return "";
-    return '<h2 style="margin-top:0">期限が近い仕事があります</h2><div class="remlist">' + due.map(x => '<div class="wit"><div class="wbody"><b>' + esc(x.t.t) + "</b> " + dueTag(x) + (x.t.n ? '<div class="ww">⚠ ' + esc(x.t.n.split("\n")[0]) + "</div>" : "") + "</div></div>").join("") + '</div><p><button class="btn" data-wact="go-home">仕事タブで開く</button></p>';
+    return '<h2 class="wrem-h">期限が近い仕事があります</h2><div class="remlist">' + due.map(x => '<div class="wit"><div class="wbody"><b>' + esc(x.t.t) + "</b> " + dueTag(x) + (x.t.n ? '<div class="ww">⚠ ' + esc(x.t.n.split("\n")[0]) + "</div>" : "") + "</div></div>").join("") + '</div><p><button class="btn wbtn" data-wact="go-home">仕事タブで開く</button></p>';
   };
   A.work.dueCount = () => dueList().length;
 
