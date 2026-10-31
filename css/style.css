@@ -526,4 +526,4 @@ dialog#wdlg{max-width:min(600px,calc(100vw - 24px));max-height:calc(100vh - 24px
 dialog#wimgdlg{max-width:calc(100vw - 16px);width:calc(100vw - 16px);max-height:calc(100vh - 16px);padding:10px;overflow:hidden}
 .wimgtop{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
 .wimgbox{overflow:auto;max-height:calc(100vh - 90px);-webkit-overflow-scrolling:touch}
-.wimgbox img{display:block;max-width:none;width:auto;height:auto;cursor:zoom-out}
+.wimgbox img{display:block;max-width:none;height:auto;width:100%;cursor:zoom-in}

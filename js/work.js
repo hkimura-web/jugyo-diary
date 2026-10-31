@@ -147,7 +147,7 @@
   const dueTag = x => x.kind === "late" ? '<span class="late">期限切れ ' + J.md(x.due) + "</span>" : x.kind === "today" ? '<span class="late today">今日</span>' : '<span class="late soon">' + J.md(x.due) + "</span>";
 
   /* ---------- 画面の部品 ---------- */
-  const imgs = d => (d.img || []).filter(k => IMG[k]).map(k => '<img class="wim" title="押すと元の大きさで開きます" loading="lazy" src="' + IMG[k] + '" alt="">').join("");
+  const imgs = d => (d.img || []).filter(k => IMG[k]).map(k => '<img class="wim" title="押すと大きく開きます" loading="lazy" src="' + IMG[k] + '" alt="">').join("");
   const linkOf = u => { const t = linkTitle(u); return '<a class="ml" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(t) + "</a>"; };
   function allLinks() {
     const o = []; ((W.links && W.links.sections) || []).forEach(s => s.items.forEach(i => o.push({ t: i.t, u: i.u, sec: s.title, grp: s.group })));
@@ -336,10 +336,16 @@
     r.readAsText(f);
   }
 
+  function zoom(z) {
+    const i = $("wimgbig"); i.dataset.z = z; i.style.width = z === "fit" ? "100%" : z === "x2" ? "200%" : "300%";
+    document.querySelectorAll("[data-wzoom]").forEach(b => b.setAttribute("aria-pressed", b.dataset.wzoom === z));
+  }
   document.addEventListener("click", e => {
     const im = e.target.closest(".wim");
-    if (im) { $("wimgbig").src = im.src; if (!$("wimgdlg").open) $("wimgdlg").showModal(); return; }
-    if (e.target.id === "wimgbig" || e.target.id === "wimgclose") { $("wimgdlg").close(); return; }
+    if (im) { $("wimgbig").src = im.src; zoom("fit"); if (!$("wimgdlg").open) $("wimgdlg").showModal(); return; }
+    const zb = e.target.closest("[data-wzoom]"); if (zb) { zoom(zb.dataset.wzoom); return; }
+    if (e.target.id === "wimgbig") { zoom($("wimgbig").dataset.z === "fit" ? "x2" : "fit"); return; }
+    if (e.target.id === "wimgclose") { $("wimgdlg").close(); return; }
     const tb = e.target.closest("[data-wtab]");
     if (tb) { ui.tab = tb.dataset.wtab; A.render(); root.scrollTo(0, 0); return; }
     const t = e.target.closest("[data-wact]"); if (!t) return;

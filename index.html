@@ -9,7 +9,7 @@
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
 <div class="wrap">
@@ -63,7 +63,7 @@
 
 <dialog id="carrydlg" aria-label="前の学期から引き継ぐ"><div id="carrybody"></div></dialog>
 
-<dialog id="wimgdlg" aria-label="画像（元の大きさ）"><div class="wimgtop"><span class="note">画像を押すか、「閉じる」で戻ります。大きいときは指でスクロールできます。</span><button class="btn on" id="wimgclose">閉じる</button></div><div class="wimgbox"><img id="wimgbig" alt=""></div></dialog>
+<dialog id="wimgdlg" aria-label="画像（拡大）"><div class="wimgtop"><span class="seg" style="margin:0"><button data-wzoom="fit" aria-pressed="true">画面いっぱい</button><button data-wzoom="x2" aria-pressed="false">2倍</button><button data-wzoom="x3" aria-pressed="false">3倍</button></span><button class="btn on" id="wimgclose">閉じる</button></div><div class="wimgbox"><img id="wimgbig" alt=""></div></dialog>
 
 <dialog id="wdlg" aria-label="仕事"><div id="wbody"></div></dialog>
 
@@ -91,12 +91,12 @@
   </div>
 </dialog>
 
-<script src="js/logic.js"></script>
-<script src="js/storage.js"></script>
-<script src="js/views.js"></script>
-<script src="js/library.js"></script>
-<script src="js/workseed.js"></script>
-<script src="js/work.js"></script>
-<script src="js/main.js"></script>
+<script src="js/logic.js?v=2"></script>
+<script src="js/storage.js?v=2"></script>
+<script src="js/views.js?v=2"></script>
+<script src="js/library.js?v=2"></script>
+<script src="js/workseed.js?v=3"></script>
+<script src="js/work.js?v=2"></script>
+<script src="js/main.js?v=2"></script>
 </body>
 </html>
