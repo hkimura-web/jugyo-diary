@@ -522,3 +522,8 @@ body.workmode .asof,body.workmode #termwrap{display:none}
 .wstar[aria-pressed="false"]{color:var(--muted)}
 dialog#wdlg{max-width:min(600px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto}
 @media (max-width:640px){.wtabs{grid-template-columns:repeat(3,1fr)}.modeseg button{padding:6px 22px}}
+.wim{cursor:zoom-in}
+dialog#wimgdlg{max-width:calc(100vw - 16px);width:calc(100vw - 16px);max-height:calc(100vh - 16px);padding:10px;overflow:hidden}
+.wimgtop{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.wimgbox{overflow:auto;max-height:calc(100vh - 90px);-webkit-overflow-scrolling:touch}
+.wimgbox img{display:block;max-width:none;width:auto;height:auto;cursor:zoom-out}

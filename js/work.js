@@ -147,7 +147,7 @@
   const dueTag = x => x.kind === "late" ? '<span class="late">期限切れ ' + J.md(x.due) + "</span>" : x.kind === "today" ? '<span class="late today">今日</span>' : '<span class="late soon">' + J.md(x.due) + "</span>";
 
   /* ---------- 画面の部品 ---------- */
-  const imgs = d => (d.img || []).filter(k => IMG[k]).map(k => '<img class="wim" loading="lazy" src="' + IMG[k] + '" alt="">').join("");
+  const imgs = d => (d.img || []).filter(k => IMG[k]).map(k => '<img class="wim" title="押すと元の大きさで開きます" loading="lazy" src="' + IMG[k] + '" alt="">').join("");
   const linkOf = u => { const t = linkTitle(u); return '<a class="ml" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(t) + "</a>"; };
   function allLinks() {
     const o = []; ((W.links && W.links.sections) || []).forEach(s => s.items.forEach(i => o.push({ t: i.t, u: i.u, sec: s.title, grp: s.group })));
@@ -337,6 +337,9 @@
   }
 
   document.addEventListener("click", e => {
+    const im = e.target.closest(".wim");
+    if (im) { $("wimgbig").src = im.src; if (!$("wimgdlg").open) $("wimgdlg").showModal(); return; }
+    if (e.target.id === "wimgbig" || e.target.id === "wimgclose") { $("wimgdlg").close(); return; }
     const tb = e.target.closest("[data-wtab]");
     if (tb) { ui.tab = tb.dataset.wtab; A.render(); root.scrollTo(0, 0); return; }
     const t = e.target.closest("[data-wact]"); if (!t) return;
