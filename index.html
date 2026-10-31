@@ -29,7 +29,10 @@
   </header>
   <div class="status" id="status" role="status"></div>
   <div id="banner"></div>
-  <div class="tabbar">
+  <div class="modebar" role="group" aria-label="授業と仕事の切り替え">
+    <div class="seg modeseg"><button data-act="mode" data-v="class" id="mode-class" aria-pressed="true">授業</button><button data-act="mode" data-v="work" id="mode-work" aria-pressed="false">仕事</button></div>
+  </div>
+  <div class="tabbar" id="classtabs">
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-today" data-tab="today"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none"/></svg><span>今日</span></button>
       <button class="tab" role="tab" id="tab-plan" data-tab="plan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg><span>計画表</span></button>
@@ -37,6 +40,16 @@
       <button class="tab" role="tab" id="tab-unit" data-tab="unit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg><span>単元別</span></button>
       <button class="tab" role="tab" id="tab-sum" data-tab="sum"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6"/></svg><span>サマリー</span></button>
       <button class="tab" role="tab" id="tab-lib" data-tab="lib"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10.5a2.5 2.5 0 0 1 2.5 2.5v13H7.5A2.5 2.5 0 0 1 5 17.5z"/><path d="M5 17.5A2.5 2.5 0 0 1 7.5 15H18M9 8.5h5"/></svg><span>資料</span></button>
+    </div>
+  </div>
+  <div class="tabbar" id="worktabs" hidden>
+    <div class="tabs wtabs" role="tablist">
+      <button class="tab" role="tab" data-wtab="home"><span>ホーム</span></button>
+      <button class="tab" role="tab" data-wtab="year"><span>年間</span></button>
+      <button class="tab" role="tab" data-wtab="links"><span>リンク集</span></button>
+      <button class="tab" role="tab" data-wtab="docs"><span>手順・メモ</span></button>
+      <button class="tab" role="tab" data-wtab="cal"><span>カレンダー</span></button>
+      <button class="tab" role="tab" data-wtab="set"><span>設定</span></button>
     </div>
   </div>
   <main id="app"></main>
@@ -49,6 +62,8 @@
 <dialog id="urldlg" aria-label="Google Classroomのリンク"><div id="urlbody"></div></dialog>
 
 <dialog id="carrydlg" aria-label="前の学期から引き継ぐ"><div id="carrybody"></div></dialog>
+
+<dialog id="wdlg" aria-label="仕事"><div id="wbody"></div></dialog>
 
 <dialog id="remdlg" aria-label="記録がまだ入っていない授業"><div id="rembody"></div></dialog>
 
@@ -78,6 +93,8 @@
 <script src="js/storage.js"></script>
 <script src="js/views.js"></script>
 <script src="js/library.js"></script>
+<script src="js/workseed.js"></script>
+<script src="js/work.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

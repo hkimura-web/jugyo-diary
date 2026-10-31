@@ -32,6 +32,10 @@
       else { dot = "ok"; txt = "GitHubに保存済み"; }
     } else if (dirty) { dot = "warn"; txt = "この端末に下書き保存中（GitHubには保存されていません）"; }
     else { dot = ""; txt = "閲覧モード：右上の「設定」でGitHubを接続すると、記録を保存できます"; }
+    if (A.ui.mode === "work") {
+      $("status").innerHTML = '<span><span class="dot ' + (/⚠/.test(A.work.statusText()) ? "warn" : /保存済み|同期/.test(A.work.statusText()) ? "ok" : "") + '"></span>' + J.esc(A.work.statusText()) + "</span>";
+      return;
+    }
     const pn = A.st ? A.views.pendingList().length : 0;
     $("status").innerHTML = '<span><span class="dot ' + dot + '"></span>' + J.esc(txt) + "</span>" +
       (pn ? ' <button class="remchip" data-act="rem-open" title="記録がまだ入っていない過去の授業">記録待ち ' + pn + "コマ</button>" : "");
@@ -97,7 +101,8 @@
   }
   function openRem(auto) {
     const today = J.ds(new Date());
-    if (auto && (LS.get("jd.remind") === today || today < A.st.term.start || today > J.addDays(A.st.term.end, 7) || !A.views.pendingList().length)) return;
+    const lessons = today >= A.st.term.start && today <= J.addDays(A.st.term.end, 7) && A.views.pendingList().length;
+    if (auto && (LS.get("jd.remind") === today || !(lessons || (A.work && A.work.dueCount())))) return;
     $("rembody").innerHTML = A.views.rem();
     if (!$("remdlg").open) $("remdlg").showModal();
     if (auto) LS.set("jd.remind", today);
@@ -122,7 +127,7 @@
       td.classList.add("flash"); setTimeout(() => td.classList.remove("flash"), 2500);
     }
   }
-  function goHome() { A.ui.tab = "today"; A.ui.open = null; render(); window.scrollTo(0, 0); }
+  function goHome() { A.ui.mode = "class"; LS.set("jd.mode", "class"); A.ui.tab = "today"; A.ui.open = null; render(); window.scrollTo(0, 0); }
   function fillFlow() { $("flowbody").innerHTML = A.views.flow(); }
   function fillCell() {
     const html = A.ui.cell ? A.views.cell(A.ui.cell) : null;
@@ -131,6 +136,18 @@
   }
   function render() {
     if (!A.st) return;
+    const wm = A.ui.mode === "work";
+    document.body.classList.toggle("workmode", wm);
+    $("classtabs").hidden = wm; $("worktabs").hidden = !wm;
+    $("mode-class").setAttribute("aria-pressed", !wm); $("mode-work").setAttribute("aria-pressed", wm);
+    if (wm) {
+      $("sub").textContent = A.work.sub();
+      document.querySelectorAll("[data-wtab]").forEach(b => b.setAttribute("aria-selected", b.dataset.wtab === A.ui.work.tab));
+      document.querySelector(".wrap").classList.remove("wide");
+      $("app").innerHTML = A.work.view();
+      renderStatus(); renderBanner();
+      return;
+    }
     $("sub").textContent = A.st.term.name + "（" + J.md(A.st.term.start) + "〜" + J.md(A.st.term.end) + "）";
     $("asof").value = A.ui.asof;
     ["today", "plan", "grid", "unit", "sum", "lib"].forEach(t => $("tab-" + t).setAttribute("aria-selected", A.ui.tab === t));
@@ -341,6 +358,7 @@
     if (t.dataset.tab) { A.ui.tab = t.dataset.tab; A.ui.open = null; render(); return; }
     const a = t.dataset.act, k = t.dataset.key, id = t.dataset.id;
     switch (a) {
+      case "mode": A.ui.mode = t.dataset.v; LS.set("jd.mode", A.ui.mode); render(); window.scrollTo(0, 0); break;
       case "open": A.ui.open = A.ui.open === k ? null : k; render(); break;
       case "cell": A.ui.cell = k; A.ui.addUnit = null; fillCell(); if (!$("celldlg").open) $("celldlg").showModal(); break;
       case "close-cell": $("celldlg").close(); break;
@@ -526,7 +544,7 @@
     else if (document.visibilityState === "visible") refreshLatest();
   });
 
-  A.newUnit = newUnit; A.render = render; A.toast = toast; A.commit = commit;
+  A.remCheck = remCheck; A.renderStatus = renderStatus; A.newUnit = newUnit; A.render = render; A.toast = toast; A.commit = commit;
 
   /* ---------- 起動 ---------- */
   (async function boot() {
@@ -539,6 +557,7 @@
     $("term").innerHTML = terms.map(t => '<option value="' + J.esc(t.id) + '">' + J.esc(t.name) + "</option>").join("");
     $("termwrap").hidden = terms.length < 2;
     A.ui.gridEdit = LS.get("jd.gridEdit") !== "0";
+    A.ui.mode = LS.get("jd.mode") === "work" ? "work" : "class";
     const saved = LS.get("jd.term");
     await loadTerm(terms.some(t => t.id === saved) ? saved : terms[terms.length - 1].id);
   })();

@@ -163,6 +163,7 @@
     const today = rows.filter(r => r.date === asof);
     h += panel("p-now", md(asof) + "（" + dw(asof) + "）の授業", today.length ? today.length + "コマ" : "", (evT ? '<p class="note" style="margin:0 0 8px">行事：' + esc(evT) + "</p>" : "") +
       (today.length ? '<div class="list">' + today.map(r => slotCard(r, true)).join("") + "</div>" : '<p class="note" style="margin:0">この日に担当授業はありません。</p>'));
+    if (A.work) h += A.work.todayPanel();
     const lim = addDays(asof, 7);
     const soon = rows.filter(r => r.date > asof && r.date <= lim && r.kind !== "off");
     h += panel("p-soon", "これから1週間", soon.length ? soon.length + "コマ" : "", soon.length ? '<div class="list">' + soon.map(r => slotCard(r, true)).join("") + "</div>" : '<p class="note" style="margin:0">授業の予定はありません。</p>');
@@ -317,10 +318,11 @@
     return out;
   }
   function viewRem() {
-    const L = pendingList();
+    const L = pendingList(), wk = A.work ? A.work.remHtml() : "";
+    if (!L.length && wk) return wk + '<div class="dlg-btns" style="justify-content:space-between"><button class="btn" data-act="rem-today">今日はもう表示しない</button><button class="btn on" data-act="rem-close">閉じる</button></div>';
     if (!L.length) return '<h2>記録のもれはありません</h2><p class="note">過去の授業は、すべて記録（または休講・授業なしの設定）が入っています。</p><div class="dlg-btns"><button class="btn on" data-act="rem-close">閉じる</button></div>';
     const show = L.slice(0, 40);
-    let h = '<h2>記録がまだ入っていない授業があります</h2><p class="note" style="margin:0 0 8px">日付が過ぎたのに、「実施した」などの記録が入っていない授業が <b>' + L.length + "コマ</b>あります。押すと、一覧のそのコマへ移動します。</p><div class=\"remlist\">";
+    let h = wk + '<h2' + (wk ? ' style="margin-top:16px"' : "") + '>記録がまだ入っていない授業があります</h2><p class="note" style="margin:0 0 8px">日付が過ぎたのに、「実施した」などの記録が入っていない授業が <b>' + L.length + "コマ</b>あります。押すと、一覧のそのコマへ移動します。</p><div class=\"remlist\">";
     show.forEach(x => {
       h += '<button class="remitem k-' + subj(x.c.name) + '" data-act="rem-go" data-key="' + esc(x.r.key) + '"><b class="num">' + md(x.r.date) + "（" + dw(x.r.date) + "）</b> " + esc(x.c.short) + ' <span class="per">' + perTxt(x.r) + "</span>" +
         '<span class="remt">' + esc(x.r.kind === "empty" ? "（計画なし）" : clip(rowTitle(x.r), 36)) + "</span></button>";
