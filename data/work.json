@@ -59,6 +59,7 @@
     "i8"
    ],
    "t": "成績処理の手順(各学期共通)",
+   "tag": "jugyo",
    "tip": false,
    "u": ""
   },
@@ -69,6 +70,7 @@
     "i7"
    ],
    "t": "通知表準備(BLEND)の手順",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -77,6 +79,7 @@
    "id": "d3",
    "img": [],
    "t": "忌引・公欠・出席停止",
+   "tag": "class",
    "tip": true,
    "u": ""
   },
@@ -85,6 +88,7 @@
    "id": "d4",
    "img": [],
    "t": "推薦の規定(公募・指定校)",
+   "tag": "class",
    "tip": true,
    "u": ""
   },
@@ -93,6 +97,7 @@
    "id": "d5",
    "img": [],
    "t": "年度途中の住所変更など",
+   "tag": "class",
    "tip": true,
    "u": ""
   },
@@ -101,6 +106,7 @@
    "id": "d6",
    "img": [],
    "t": "座席表・連絡先",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -111,6 +117,7 @@
     "i2"
    ],
    "t": "通知表プレビューチェックの注意",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -125,6 +132,7 @@
     "i6"
    ],
    "t": "指導要録の手順メモ",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -137,6 +145,7 @@
     "i10"
    ],
    "t": "教室寸法・机の配置",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -145,6 +154,7 @@
    "id": "d10",
    "img": [],
    "t": "最初の話(第1回懇談会でも話す)",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -153,6 +163,7 @@
    "id": "d14",
    "img": [],
    "t": "クラス目標の例",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -161,6 +172,7 @@
    "id": "d11",
    "img": [],
    "t": "9月懇談会の話(S1)",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -169,6 +181,7 @@
    "id": "d12",
    "img": [],
    "t": "9月懇談会の話(S3)",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -177,6 +190,7 @@
    "id": "d13",
    "img": [],
    "t": "夏期面談の話す内容",
+   "tag": "class",
    "tip": false,
    "u": ""
   },
@@ -185,6 +199,7 @@
    "id": "d15",
    "img": [],
    "t": "マイコプラズマ肺炎の出席停止",
+   "tag": "class",
    "tip": true,
    "u": ""
   },
@@ -193,6 +208,7 @@
    "id": "d16",
    "img": [],
    "t": "アルバイト申請書",
+   "tag": "class",
    "tip": true,
    "u": "https://docs.google.com/document/d/17IQLJloZ9bM2Bgo6XsXszsnSWANjQPvXZ6Lx27IC9IE/edit"
   },
@@ -204,6 +220,7 @@
     "i8"
    ],
    "t": "欠課時数の確認(年間・学期)",
+   "tag": "jugyo",
    "tip": true,
    "u": ""
   },
@@ -212,6 +229,7 @@
    "id": "d1793532014412",
    "img": [],
    "t": "BLEND",
+   "tag": "",
    "tip": true,
    "u": "https://blend.school/admin/dashboard"
   },
@@ -220,6 +238,7 @@
    "id": "d1793532030555",
    "img": [],
    "t": "KGM通信",
+   "tag": "",
    "tip": true,
    "u": "https://wdsd.net/kgm-h/user/message/list?folder=receive"
   },
@@ -228,6 +247,16 @@
    "id": "d1793532360454",
    "img": [],
    "t": "新しいメモ",
+   "tag": "",
+   "u": ""
+  },
+  {
+   "b": "",
+   "id": "d1793533288579",
+   "img": [],
+   "t": "新しいTips",
+   "tag": "",
+   "tip": true,
    "u": ""
   }
  ],
