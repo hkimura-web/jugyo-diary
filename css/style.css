@@ -568,3 +568,10 @@ dialog#wimgdlg{max-width:calc(100vw - 16px);width:calc(100vw - 16px);max-height:
 .p-tips .wtpw .wtp{margin:0 1px}
 .p-tips .wmv{padding:1px 4px;font-size:10px}
 .p-tips .panel-n .btn{font-size:11px;padding:1px 8px}
+/* 残りの授業時間: ほんの少しだけ小さく */
+.tiles{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.tile{gap:5px;padding:9px 12px}
+.tile-h b{font-size:14px}
+.tile-h span{font-size:12.5px}
+.big{font-size:29px}
+.big small{font-size:12.5px}
