@@ -336,7 +336,7 @@
   "items": [
    {
     "id": "m1",
-    "t": "KG通信",
+    "t": "KGM通信",
     "u": "https://wdsd.net/kgm-h/user/message/list?folder=receive"
    },
    {
