@@ -331,6 +331,32 @@
  ],
  "g": "1",
  "mine": [],
+ "morning": {
+  "done": {},
+  "items": [
+   {
+    "id": "m1",
+    "t": "KGM通信",
+    "u": "https://wdsd.net/kgm-h/user/message/list?folder=receive"
+   },
+   {
+    "id": "m2",
+    "t": "BLEND",
+    "u": ""
+   },
+   {
+    "id": "m3",
+    "t": "学年のドキュメント",
+    "u": ""
+   },
+   {
+    "id": "m4",
+    "t": "学年のスプレッドシート",
+    "u": ""
+   }
+  ],
+  "weekend": false
+ },
  "roles": [
   "担",
   "教",
