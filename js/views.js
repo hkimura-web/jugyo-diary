@@ -154,7 +154,7 @@
       tiles += '<button class="tile k-' + subj(c.name) + '" data-act="goplan" data-id="' + c.id + '"><span class="tile-h"><b>' + esc(a) + "</b><span>" + esc(b) + '</span></span><span class="big num">' + s.remain + '<small>時間</small></span>' + meter(o, false) + "<span>" + gap + "</span></button>";
     });
     tiles += "</div>";
-    let h = panel("p-rem", "残りの授業時間", md(asof) + "から", tiles);
+    let h = (A.work ? A.work.morning() : "") + panel("p-rem", "残りの授業時間", md(asof) + "から", tiles);
 
     const rows = [];
     all.forEach(({ s }) => s.pj.rows.forEach(r => rows.push(r)));

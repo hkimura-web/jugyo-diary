@@ -55,6 +55,10 @@
       if (t.t.startsWith("11月個人面談 予定表") && !String(t.n).includes("h.k1") && !String(t.n).includes("hayato")) t.n += (t.n ? "\n" : "") + "Claudeアカウント: " + MAIL + " で作成";
       t.n = san(t.n); t.k = san(t.k); t.t = san(t.t); t.lk = Array.isArray(t.lk) ? t.lk : [];
     });
+    const mo = s.morning = s.morning || {};
+    if (!Array.isArray(mo.items)) mo.items = [{ id: "m1", t: "KGM通信", u: "" }, { id: "m2", t: "BLEND", u: "" }, { id: "m3", t: "学年のドキュメント", u: "" }, { id: "m4", t: "学年のスプレッドシート", u: "" }];
+    mo.done = mo.done || {}; mo.weekend = !!mo.weekend;
+    { const old = J.addDays(J.ds(new Date()), -3); Object.keys(mo.done).forEach(k => { if (k.slice(0, 10) < old) delete mo.done[k]; }); }
     s.d = s.d || {}; s.cd = s.cd || {}; s.tipOrder = Array.isArray(s.tipOrder) ? s.tipOrder : []; s.fav = Array.isArray(s.fav) ? s.fav : []; s.mine = Array.isArray(s.mine) ? s.mine : [];
     s.roles = s.roles || ["担", "教", "部"]; s.g = s.g || "3";
     if (!s.y || s.y < FY) s.y = FY; /* 年度が変わると自動で新しい年度になる（完了チェックは年度ごとに別なので、未完了に戻る） */
@@ -187,7 +191,7 @@
     const s = W.S, cur = fyIdx(), all = s.tasks.filter(t => vis(t) && !t.rep), dn = all.filter(t => isD(t, t.m)).length, due = dueList();
     let late = ""; for (let i = 0; i < cur; i++) { const m = ORDER[i]; inM(m).filter(t => !isD(t, m)).forEach(t => { late += item(t, m, '<span class="late">' + m + "月</span>"); }); }
     const m = ORDER[Math.max(0, Math.min(11, cur))], nx = cur < 11 ? ORDER[cur + 1] : null;
-    let h = "";
+    let h = A.work.morning();
     if (W.conflict) h += '<div class="banner err"><div>別の端末で先に更新されています。</div><div class="btns"><button class="btn" data-wact="reload">最新を読み込み直す</button></div></div>';
     if (due.length) h += panel("p-work", "期限が近い校務", due.length + "件", due.map(x => item(x.t, x.m, dueTag(x))).join(""));
     h += tipsH();
@@ -271,10 +275,22 @@
     const s = W.S;
     return '<div class="wcard"><b>担当</b><br>' + [["J", "中学"], ["1", "高1"], ["2", "高2"], ["3", "高3"]].map(([v, l]) => '<label class="wck" style="display:inline-block;margin-right:12px"><input type="radio" name="wg" ' + (s.g === v ? "checked" : "") + ' data-wchg="grade" data-v="' + v + '"> ' + l + "</label>").join("") + "<br><b>表示する校務</b><br>" +
       Object.entries(RL).map(([v, l]) => '<label class="wck" style="display:inline-block;margin-right:12px"><input type="checkbox" ' + (s.roles.includes(v) ? "checked" : "") + ' data-wchg="role" data-v="' + v + '"> ' + l + "</label>").join("") + "</div>" +
+      '<div class="wcard"><b>朝の確認</b><p class="note">毎朝、ホームに小さく出ます。名前とURL（任意）を入れてください。URLがあると、押して開くと同時に「確認済み」になります。</p>' + s.morning.items.map((x, i) => '<div class="wlink"><input type="text" value="' + esc(x.t) + '" data-wf="m-t" data-i="' + i + '" placeholder="名前" style="flex:1;margin:0"><input type="text" value="' + esc(x.u) + '" data-wf="m-u" data-i="' + i + '" placeholder="https://…" style="flex:2;margin:0"><button class="btn sm" data-wact="m-up" data-i="' + i + '" aria-label="上へ">↑</button><button class="btn sm" data-wact="m-dn" data-i="' + i + '" aria-label="下へ">↓</button><button class="btn sm danger" data-wact="m-del" data-i="' + i + '">消す</button></div>').join("") + '<button class="btn" data-wact="m-add">＋ 追加</button><label class="wck"><input type="checkbox" data-wchg="m-weekend"' + (s.morning.weekend ? " checked" : "") + '> 土日にも出す</label></div>' +
       '<div class="wcard"><b>保存</b><p class="note">' + esc(W.st) + '</p><p class="note">GitHubの接続は、画面右上の「設定」で授業の記録と共通です（トークンは1つで足ります）。校務のデータは <code>data/work.json</code> に保存されます。</p></div>' +
       '<div class="wcard"><b>バックアップ</b><p class="note">いままでの「1年間の仕事」アプリで書き出した .json は、そのまま読み込めます（完了チェックも引き継がれます）。</p><button class="btn" data-wact="bk-out">ファイルに書き出す</button> <label class="btn" for="wbk" style="margin:0">ファイルから読み込む</label><input type="file" id="wbk" accept="application/json,.json" hidden></div>' +
       '<div class="wcard"><b>年度</b><p class="note">いまは ' + s.y + "年度です。4月になると自動で新しい年度になり、完了チェックは未完了に戻ります（タスクの内容と「来年へのメモ」はそのまま残ります）。</p></div>";
   }
+  /* 毎朝の確認（KGM通信・BLEND・学年の資料など）。小さな1行にして、全部済んだら細い線に畳む */
+  A.work.morning = function () {
+    if (!W.ready) return "";
+    const m = W.S.morning, today = J.ds(new Date()), dow = new Date().getDay();
+    if (!m.items.length || (!m.weekend && (dow === 0 || dow === 6))) return "";
+    const done = id => !!m.done[today + ":" + id], n = m.items.filter(x => done(x.id)).length, all = n === m.items.length;
+    if (all && !ui.mornOpen) return '<div class="wmorn wmorn-done"><span class="wm-t">☀ 朝の確認</span><span class="wm-ok">✓ すべて確認しました</span><button class="wm-more" data-wact="m-fold">ひらく</button></div>';
+    const chips = m.items.map(x => '<span class="wmc' + (done(x.id) ? " on" : "") + '"><button class="wmck" data-wact="m-toggle" data-id="' + x.id + '" aria-pressed="' + done(x.id) + '" aria-label="確認済みにする">' + (done(x.id) ? "✓" : "") + "</button>" +
+      (x.u ? '<a class="wml" href="' + esc(x.u) + '" target="_blank" rel="noopener noreferrer" data-wact="m-link" data-id="' + x.id + '">' + esc(x.t) + " ↗</a>" : '<span class="wml" data-wact="m-toggle" data-id="' + x.id + '">' + esc(x.t) + "</span>") + "</span>").join("");
+    return '<div class="wmorn"><span class="wm-t">☀ 朝の確認</span><span class="wm-chips">' + chips + '</span><span class="wm-n">' + n + "/" + m.items.length + "</span>" + (all ? '<button class="wm-more" data-wact="m-fold">とじる</button>' : "") + "</div>";
+  };
   A.work.view = function () {
     if (!W.ready) return '<p class="note">読み込んでいます…</p>';
     return { home: viewHome, year: viewYear, links: viewLinks, docs: viewDocs, cal: viewCal, set: viewSet }[ui.tab]();
@@ -402,6 +418,13 @@
         if (k >= 0 && to >= 0 && to < ids.length) { ids.splice(to, 0, ids.splice(k, 1)[0]); W.S.tipOrder = ids; save(); A.render(); }
         break;
       }
+      case "m-toggle": { const k = J.ds(new Date()) + ":" + id; if (W.S.morning.done[k]) delete W.S.morning.done[k]; else W.S.morning.done[k] = true; save(); A.render(); break; }
+      case "m-link": { W.S.morning.done[J.ds(new Date()) + ":" + id] = true; save(); setTimeout(() => A.render(), 120); break; }
+      case "m-fold": ui.mornOpen = !ui.mornOpen; A.render(); break;
+      case "m-add": W.S.morning.items.push({ id: "m" + Date.now(), t: "", u: "" }); save(); A.render(); break;
+      case "m-del": W.S.morning.items.splice(i, 1); save(); A.render(); break;
+      case "m-up": if (i > 0) { const a = W.S.morning.items; a.splice(i - 1, 0, a.splice(i, 1)[0]); save(); A.render(); } break;
+      case "m-dn": if (i < W.S.morning.items.length - 1) { const a = W.S.morning.items; a.splice(i + 1, 0, a.splice(i, 1)[0]); save(); A.render(); } break;
       case "grp": ui.grp = t.dataset.v; A.render(); break;
       case "mine-add": {
         const n = $("wl_t").value.trim(), u = $("wl_u").value.trim();
@@ -431,12 +454,14 @@
       case "doc-tag": W.S.docs[i].tag = t.value; save(); break;
       case "grade": W.S.g = t.dataset.v; save(); break;
       case "role": { const v = t.dataset.v; W.S.roles = W.S.roles.includes(v) ? W.S.roles.filter(x => x !== v) : W.S.roles.concat(v); save(); break; }
+      case "m-weekend": W.S.morning.weekend = t.checked; save(); break;
       case "favonly": ui.fav = t.checked; A.render(); break;
     }
   });
   document.addEventListener("input", e => {
     const t = e.target, f = t.dataset && t.dataset.wf; if (!f) return;
     const i = +t.dataset.i;
+    if (f === "m-t" || f === "m-u") { W.S.morning.items[i][f === "m-t" ? "t" : "u"] = t.value.trim(); save(); return; }
     if (f === "dq") { ui.dq = t.value; const r = $("wdocs"); if (r) r.innerHTML = docList(); return; }
     if (f === "lq") { ui.q = t.value; const r = $("wres"); if (r) r.innerHTML = linkResults(); return; }
     if (f === "doc-t") { W.S.docs[i].t = t.value; const sm = t.closest(".wdoc"); if (sm) sm.querySelector(".wdt").textContent = t.value || "（無題）"; } else if (f === "doc-b") W.S.docs[i].b = t.value; else if (f === "doc-u") W.S.docs[i].u = t.value;
