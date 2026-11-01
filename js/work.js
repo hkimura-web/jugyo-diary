@@ -176,7 +176,7 @@
     const l = tipList(), used = TAGS.filter(t => l.some(d => d.tag === t[0])), sorting = ui.tipSort;
     const btn = d => '<button class="wtp t-' + esc(d.tag || "none") + '" data-wact="tip" data-id="' + d.id + '">' + esc(d.t) + "</button>";
     const body = l.map((d, k) => sorting ? '<span class="wtpw"><button class="wmv" data-wact="tip-mv" data-id="' + d.id + '" data-d="-1"' + (k === 0 ? " disabled" : "") + ' aria-label="前へ">◀</button>' + btn(d) + '<button class="wmv" data-wact="tip-mv" data-id="' + d.id + '" data-d="1"' + (k === l.length - 1 ? " disabled" : "") + ' aria-label="後ろへ">▶</button></span>' : btn(d)).join("");
-    return '<section class="panel p-work"><header class="panel-h"><h2>重要Tips</h2><span class="panel-n"><button class="btn sm" data-wact="tip-sort">' + (sorting ? "完了" : "並べ替え") + '</button></span></header><div class="panel-b">' +
+    return '<section class="panel p-work p-tips"><header class="panel-h"><h2>重要Tips</h2><span class="panel-n"><button class="btn sm" data-wact="tip-sort">' + (sorting ? "完了" : "並べ替え") + '</button></span></header><div class="panel-b">' +
       (sorting ? '<p class="note" style="margin:0 0 8px">◀ ▶ で前後に動かせます。よく使うものを前にしてください。 <button class="btn sm" data-wact="tip-auto">自動の並び（公務→クラス→授業→部活動）に戻す</button></p>' : (used.length ? '<div class="wleg">' + used.map(t => '<span class="wtag t-' + t[0] + '">' + t[1] + "</span>").join("") + "</div>" : "")) +
       body + "</div></section>";
   }

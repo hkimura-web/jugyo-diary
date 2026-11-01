@@ -556,3 +556,15 @@ dialog#wimgdlg{max-width:calc(100vw - 16px);width:calc(100vw - 16px);max-height:
 .wdoc summary .wst{color:#e0a526}
 .wfab{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;border:0;background:var(--wk);color:#fff;font-size:30px;line-height:1;box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer;z-index:6}
 .wfab:hover{filter:brightness(1.07)}
+/* 重要Tips: 小さく・ぎゅっと */
+.p-tips{margin-bottom:10px}
+.p-tips .panel-h{padding:5px 12px}
+.p-tips .panel-h h2{font-size:14px}
+.p-tips .panel-b{padding:7px 10px 8px;line-height:1.2}
+.p-tips .wleg{gap:4px;margin:0 0 4px}
+.p-tips .wtag{font-size:10px;padding:0 7px}
+.p-tips .wtp{font-size:12px;padding:2px 9px;margin:3px 3px 0 0;border-radius:12px;line-height:1.5}
+.p-tips .wtpw{margin:3px 4px 0 0}
+.p-tips .wtpw .wtp{margin:0 1px}
+.p-tips .wmv{padding:1px 4px;font-size:10px}
+.p-tips .panel-n .btn{font-size:11px;padding:1px 8px}
