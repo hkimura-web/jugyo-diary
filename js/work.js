@@ -45,6 +45,7 @@
       s.docs.forEach(d => { if (["d3", "d4", "d5", "d15", "d16", "d17"].includes(d.id)) d.tip = true; });
       s.v = 3;
     }
+    s.docs.forEach(d => { if (d.tag === undefined) d.tag = TAGDEF[d.id] || ""; });
     s.docs.forEach(d => { d.img = (DOCS.find(x => x.id === d.id) || {}).img || d.img || []; d.b = san(d.b); d.t = san(d.t); d.u = d.u || ""; });
     s.tasks.forEach(t => {
       if (t.dd == null) t.dd = 0;
@@ -160,11 +161,16 @@
     return '<div class="wit' + (dn ? " dn" : "") + '"><input type="checkbox" aria-label="完了" ' + (dn ? "checked" : "") + ' data-wchg="tg" data-id="' + t.id + '" data-m="' + m + '"><div class="wbody" data-wact="op" data-id="' + t.id + '" data-m="' + m + '"><b>' + esc(t.t) + '</b> <span class="wc">' + RL[t.r] + (t.tg ? " " + tgl(t.tg) : "") + (t.dd && !t.rep ? " " + m + "/" + t.dd : "") + "</span>" + (tag || "") +
       (t.n ? '<div class="ww">⚠ ' + esc(t.n.split("\n")[0]) + "</div>" : "") + (t.k ? '<div class="wk">📝 ' + esc(t.k.split("\n")[0]) + "</div>" : "") + "</div></div>";
   }
+  const TAGS = [["jugyo", "授業"], ["class", "クラス"], ["bukatsu", "部活動"], ["komu", "公務全般"]];
+  const TAGDEF = { d1: "jugyo", d17: "jugyo", d2: "class", d3: "class", d4: "class", d5: "class", d6: "class", d7: "class", d8: "class", d9: "class", d10: "class", d11: "class", d12: "class", d13: "class", d14: "class", d15: "class", d16: "class" };
+  const tagName = k => (TAGS.find(x => x[0] === k) || ["", ""])[1];
   const TO = ["d5", "d3", "d15", "d4", "d16", "d17"];
   function tipsH() {
     const f = x => { const i = TO.indexOf(x.id); return i < 0 ? 99 : i; }, l = W.S.docs.filter(d => d.tip).sort((a, b) => f(a) - f(b));
+    const used = TAGS.filter(t => l.some(d => d.tag === t[0]));
     return '<section class="panel p-work"><header class="panel-h"><h2>重要Tips</h2><span class="panel-n">押すとすぐ説明が開きます</span></header><div class="panel-b">' +
-      l.map(d => '<button class="wtp" data-wact="tip" data-id="' + d.id + '">' + esc(d.t) + "</button>").join("") + '<button class="wtp add" data-wact="tip-add">＋ 追加</button></div></section>';
+      (used.length ? '<div class="wleg">' + used.map(t => '<span class="wtag t-' + t[0] + '">' + t[1] + "</span>").join("") + "</div>" : "") +
+      l.map(d => '<button class="wtp t-' + esc(d.tag || "none") + '" data-wact="tip" data-id="' + d.id + '">' + esc(d.t) + "</button>").join("") + '<button class="wtp add" data-wact="tip-add">＋ 追加</button></div></section>';
   }
   const panel = (cls, title, count, body) => '<section class="panel ' + cls + '"><header class="panel-h"><h2>' + title + "</h2>" + (count ? '<span class="panel-n">' + count + "</span>" : "") + '</header><div class="panel-b">' + body + "</div></section>";
 
@@ -221,7 +227,7 @@
     return h + '<p class="note">リンク一覧の作成日：' + esc((W.links && W.links.built) || "—") + "（" + esc((W.links && W.links.year) || "") + "年度のシートから）。パスワード・IDはここには入れません。</p>";
   }
   function viewDocs() {
-    return '<p class="note">タスクの「手順」として紐づけられる共通メモです。1か所直せば全部に反映されます。</p>' + W.S.docs.map((d, i) => '<div class="wcard"><input type="text" value="' + esc(d.t) + '" data-wf="doc-t" data-i="' + i + '"><label class="wck"><input type="checkbox" ' + (d.tip ? "checked" : "") + ' data-wchg="doc-tip" data-i="' + i + '"> ホームの「重要Tips」に表示</label><input type="text" placeholder="資料URL(任意)" value="' + esc(d.u || "") + '" data-wf="doc-u" data-i="' + i + '"><textarea style="min-height:110px" data-wf="doc-b" data-i="' + i + '">' + esc(d.b) + "</textarea>" + imgs(d) + '<button class="btn" data-wact="doc-del" data-i="' + i + '">削除</button></div>').join("") + '<button class="btn on" data-wact="doc-add">＋ 追加</button>';
+    return '<p class="note">タスクの「手順」として紐づけられる共通メモです。1か所直せば全部に反映されます。</p>' + W.S.docs.map((d, i) => '<div class="wcard"><input type="text" value="' + esc(d.t) + '" data-wf="doc-t" data-i="' + i + '"><label class="wck"><input type="checkbox" ' + (d.tip ? "checked" : "") + ' data-wchg="doc-tip" data-i="' + i + '"> ホームの「重要Tips」に表示</label><label class="wck">タグ（ボタンの色）： <select data-wchg="doc-tag" data-i="' + i + '" style="width:auto"><option value="">なし</option>' + TAGS.map(t => '<option value="' + t[0] + '"' + (d.tag === t[0] ? " selected" : "") + ">" + t[1] + "</option>").join("") + '</select></label><input type="text" placeholder="資料URL(任意)" value="' + esc(d.u || "") + '" data-wf="doc-u" data-i="' + i + '"><textarea style="min-height:110px" data-wf="doc-b" data-i="' + i + '">' + esc(d.b) + "</textarea>" + imgs(d) + '<button class="btn" data-wact="doc-del" data-i="' + i + '">削除</button></div>').join("") + '<button class="btn on" data-wact="doc-add">＋ 追加</button>';
   }
   function icsText(o) {
     const yr = calYear, e = s => String(s).replace(/\\/g, "\\\\").replace(/[,;]/g, "\\$&").replace(/\n/g, "\\n"), s = W.S, ev = []; let n = 0;
@@ -360,7 +366,7 @@
       case "lk-add": { readEd(); const u = $("we_lk").value; if (u && W.ed.lk.indexOf(u) < 0) W.ed.lk.push(u); renderEdit(); break; }
       case "lk-del": readEd(); W.ed.lk.splice(i, 1); renderEdit(); break;
       case "tip": { const d = W.S.docs.find(x => x.id === id); modal('<h2 style="margin:0">' + esc(d.t) + '</h2><div style="margin-top:8px">' + nl(d.b) + "</div>" + (d.u ? '<p><a href="' + esc(d.u) + '" target="_blank" rel="noopener">資料を開く ↗</a></p>' : "") + imgs(d) + '<div class="dlg-btns"><button class="btn" data-wact="cl">閉じる</button></div>'); break; }
-      case "tip-add": W.S.docs.push({ id: "d" + Date.now(), t: "新しいTips", b: "", tip: true, img: [], u: "" }); save(); ui.tab = "docs"; A.render(); root.scrollTo(0, document.body.scrollHeight); break;
+      case "tip-add": W.S.docs.push({ id: "d" + Date.now(), t: "新しいTips", b: "", tip: true, img: [], u: "", tag: "" }); save(); ui.tab = "docs"; A.render(); root.scrollTo(0, document.body.scrollHeight); break;
       case "doc-add": W.S.docs.push({ id: "d" + Date.now(), t: "新しいメモ", b: "", img: [], u: "" }); save(); A.render(); break;
       case "doc-del": if (root.confirm("削除しますか？")) { W.S.docs.splice(i, 1); save(); A.render(); } break;
       case "fav": { const u = t.dataset.u, k = W.S.fav.indexOf(u); if (k >= 0) W.S.fav.splice(k, 1); else W.S.fav.push(u); save(); A.render(); break; }
@@ -391,6 +397,7 @@
       case "cc": { const tk = W.S.tasks.find(x => x.id === id), k = ck(tk, i); if (W.S.cd[k]) delete W.S.cd[k]; else W.S.cd[k] = true; save(); break; }
       case "mk": W.S.tasks.find(x => x.id === id).k = t.value; save(); if (A.ui.mode === "work") A.render(); break;
       case "doc-tip": W.S.docs[i].tip = t.checked; save(); break;
+      case "doc-tag": W.S.docs[i].tag = t.value; save(); break;
       case "grade": W.S.g = t.dataset.v; save(); break;
       case "role": { const v = t.dataset.v; W.S.roles = W.S.roles.includes(v) ? W.S.roles.filter(x => x !== v) : W.S.roles.concat(v); save(); break; }
       case "favonly": ui.fav = t.checked; A.render(); break;

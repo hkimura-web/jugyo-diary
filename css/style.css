@@ -538,3 +538,13 @@ dialog#wimgdlg{max-width:calc(100vw - 16px);width:calc(100vw - 16px);max-height:
 .wrem-h{margin-top:0;color:var(--wk-ink);padding-bottom:6px;border-bottom:2px solid var(--wk-line)}
 .wbtn{background:var(--wk-soft);border-color:var(--wk-line);color:var(--wk-ink)}
 .wbtn:hover{border-color:var(--wk)}
+/* 重要Tipsのタグ色（淡い色） */
+.wleg{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.wtag{font-size:11px;padding:0 9px;border-radius:999px;border:1px solid transparent}
+.wtp.t-jugyo,.wtag.t-jugyo{background:#fcecec;border-color:#f3cccc;color:#9a3d3d}
+.wtp.t-class,.wtag.t-class{background:#e8f1fb;border-color:#c6dbf2;color:#2f609b}
+.wtp.t-bukatsu,.wtag.t-bukatsu{background:#f0eafa;border-color:#d9ccef;color:#5f4398}
+.wtp.t-komu,.wtag.t-komu{background:#f5eee0;border-color:#e3d6bb;color:#6f5522}
+.wtp.t-none{background:var(--wk-soft);border-color:var(--wk-line);color:var(--ink)}
+.wtp[class*="t-"]:hover{filter:brightness(.96)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .wtp.t-jugyo,:root:not([data-theme="light"]) .wtag.t-jugyo{background:#3a2326;border-color:#573338;color:#f0b4b4}:root:not([data-theme="light"]) .wtp.t-class,:root:not([data-theme="light"]) .wtag.t-class{background:#1d2c42;border-color:#2f4666;color:#a8c8f0}:root:not([data-theme="light"]) .wtp.t-bukatsu,:root:not([data-theme="light"]) .wtag.t-bukatsu{background:#2b2542;border-color:#43396a;color:#c9b8ee}:root:not([data-theme="light"]) .wtp.t-komu,:root:not([data-theme="light"]) .wtag.t-komu{background:#332c1b;border-color:#52472a;color:#e3c985}}
