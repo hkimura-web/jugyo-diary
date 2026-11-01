@@ -1,5 +1,5 @@
-/* myClassBlueprint.log: 「仕事」モード（1年間の仕事・リンク集・手順メモ・カレンダー）
- *  - 仕事のデータ: data/work.json（トークンがあれば GitHub に自動保存。なければこの端末の下書き）
+/* myClassBlueprint.log: 「校務」モード（1年間の仕事・リンク集・手順メモ・カレンダー）
+ *  - 校務のデータ: data/work.json（トークンがあれば GitHub に自動保存。なければこの端末の下書き）
  *  - リンク集の元データ: work/links.json（tools/xlsx_to_work.py でスプレッドシートから作る。アプリでは読むだけ）
  *  - 自分で足したリンク・★は work.json に入る */
 (function (root) {
@@ -15,7 +15,7 @@
   const PAT = { "懇談会(S1)": "d11", "懇談会(S3)": "d12", "夏期面談の実施": "d13", "通知表プレビュー": "d7", "指導要録ほぼ完成": "d8", "指導要録の最終確認": "d8" };
   const PV = ["備考欄の「出停」「忌引」の数字が表と一致", "成績に抜けがない", "委員・係・検定の入力", "欠課時数の合算(遅刻3回=欠課1)"];
   const W = { S: null, links: null, sha: null, dirty: false, saving: false, timer: null, token: false, conflict: false, canSave: true, st: "読み込み中…", ready: false, ed: null };
-  const ui = { tab: "home", q: "", grp: "", fav: false };
+  const ui = { tab: "home", q: "", grp: "", fav: false, tipSort: false };
   A.work = {}; A.ui.work = ui;
   const nl = s => esc(s).replace(/\n/g, "<br>");
   const nfkc = s => String(s == null ? "" : s).normalize("NFKC").toLowerCase();
@@ -45,6 +45,7 @@
       s.docs.forEach(d => { if (["d3", "d4", "d5", "d15", "d16", "d17"].includes(d.id)) d.tip = true; });
       s.v = 3;
     }
+    s.docs = s.docs.filter(d => !(d.t === "新しいTips" && !String(d.b || "").trim() && !d.u)); /* 追加ボタンで作ってしまった空のTipsは消す */
     s.docs.forEach(d => { if (d.tag === undefined) d.tag = TAGDEF[d.id] || ""; });
     s.docs.forEach(d => { d.img = (DOCS.find(x => x.id === d.id) || {}).img || d.img || []; d.b = san(d.b); d.t = san(d.t); d.u = d.u || ""; });
     s.tasks.forEach(t => {
@@ -54,7 +55,7 @@
       if (t.t.startsWith("11月個人面談 予定表") && !String(t.n).includes("h.k1") && !String(t.n).includes("hayato")) t.n += (t.n ? "\n" : "") + "Claudeアカウント: " + MAIL + " で作成";
       t.n = san(t.n); t.k = san(t.k); t.t = san(t.t); t.lk = Array.isArray(t.lk) ? t.lk : [];
     });
-    s.d = s.d || {}; s.cd = s.cd || {}; s.fav = Array.isArray(s.fav) ? s.fav : []; s.mine = Array.isArray(s.mine) ? s.mine : [];
+    s.d = s.d || {}; s.cd = s.cd || {}; s.tipOrder = Array.isArray(s.tipOrder) ? s.tipOrder : []; s.fav = Array.isArray(s.fav) ? s.fav : []; s.mine = Array.isArray(s.mine) ? s.mine : [];
     s.roles = s.roles || ["担", "教", "部"]; s.g = s.g || "3";
     if (!s.y || s.y < FY) s.y = FY; /* 年度が変わると自動で新しい年度になる（完了チェックは年度ごとに別なので、未完了に戻る） */
     return s;
@@ -93,7 +94,7 @@
     W.saving = true; W.st = "GitHubに保存中…"; setStatus();
     const snap = JSON.stringify(W.S), body = J.toJSON(W.S);
     try {
-      const r = await S.remotePut(S.getSettings(), "data/work.json", body, W.sha, "仕事タブを更新");
+      const r = await S.remotePut(S.getSettings(), "data/work.json", body, W.sha, "校務タブを更新");
       W.sha = r.sha; W.st = "GitHubに保存済み";
       if (JSON.stringify(W.S) === snap) { W.dirty = false; LS.del("jd.draft.work"); } else { clearTimeout(W.timer); W.timer = setTimeout(flush, 300); }
     } catch (e) {
@@ -126,7 +127,7 @@
     if (t.rep) return y + "-" + pad(m) + "-" + pad(new Date(y, m, 0).getDate());
     return t.dd ? y + "-" + pad(m) + "-" + pad(Math.min(t.dd, new Date(y, m, 0).getDate())) : null;
   }
-  /* 期限が今日までに来ている／2日以内に来る仕事 */
+  /* 期限が今日までに来ている／2日以内に来る校務 */
   function dueList() {
     if (!W.ready || W.S.y !== FY) return [];
     const today = J.ds(new Date()), lim = J.addDays(today, 2), m0 = new Date().getMonth() + 1, out = [];
@@ -165,12 +166,19 @@
   const TAGDEF = { d1: "jugyo", d17: "jugyo", d2: "class", d3: "class", d4: "class", d5: "class", d6: "class", d7: "class", d8: "class", d9: "class", d10: "class", d11: "class", d12: "class", d13: "class", d14: "class", d15: "class", d16: "class" };
   const tagName = k => (TAGS.find(x => x[0] === k) || ["", ""])[1];
   const TO = ["d5", "d3", "d15", "d4", "d16", "d17"];
+  /* 重要Tipsの並び: はじめは「公務全般→クラス→授業→部活動」の順。手で動かしたら、その順番を覚える */
+  function tipList() {
+    const tr = x => { const k = TAGS.findIndex(t => t[0] === x.tag); return k < 0 ? TAGS.length : k; }, f = x => { const i = TO.indexOf(x.id); return tr(x) * 100 + (i < 0 ? 99 : i); };
+    const ord = W.S.tipOrder || [], pos = x => { const i = ord.indexOf(x.id); return i < 0 ? 1e6 : i; };
+    return W.S.docs.filter(d => d.tip).sort((a, b) => ord.length ? (pos(a) - pos(b) || f(a) - f(b)) : f(a) - f(b));
+  }
   function tipsH() {
-    const tr = x => { const k = TAGS.findIndex(t => t[0] === x.tag); return k < 0 ? TAGS.length : k; }, f = x => { const i = TO.indexOf(x.id); return tr(x) * 100 + (i < 0 ? 99 : i); }, l = W.S.docs.filter(d => d.tip).sort((a, b) => f(a) - f(b));
-    const used = TAGS.filter(t => l.some(d => d.tag === t[0]));
-    return '<section class="panel p-work"><header class="panel-h"><h2>重要Tips</h2><span class="panel-n">押すとすぐ説明が開きます</span></header><div class="panel-b">' +
-      (used.length ? '<div class="wleg">' + used.map(t => '<span class="wtag t-' + t[0] + '">' + t[1] + "</span>").join("") + "</div>" : "") +
-      l.map(d => '<button class="wtp t-' + esc(d.tag || "none") + '" data-wact="tip" data-id="' + d.id + '">' + esc(d.t) + "</button>").join("") + '<button class="wtp add" data-wact="tip-add">＋ 追加</button></div></section>';
+    const l = tipList(), used = TAGS.filter(t => l.some(d => d.tag === t[0])), sorting = ui.tipSort;
+    const btn = d => '<button class="wtp t-' + esc(d.tag || "none") + '" data-wact="tip" data-id="' + d.id + '">' + esc(d.t) + "</button>";
+    const body = l.map((d, k) => sorting ? '<span class="wtpw"><button class="wmv" data-wact="tip-mv" data-id="' + d.id + '" data-d="-1"' + (k === 0 ? " disabled" : "") + ' aria-label="前へ">◀</button>' + btn(d) + '<button class="wmv" data-wact="tip-mv" data-id="' + d.id + '" data-d="1"' + (k === l.length - 1 ? " disabled" : "") + ' aria-label="後ろへ">▶</button></span>' : btn(d)).join("");
+    return '<section class="panel p-work"><header class="panel-h"><h2>重要Tips</h2><span class="panel-n"><button class="btn sm" data-wact="tip-sort">' + (sorting ? "完了" : "並べ替え") + '</button></span></header><div class="panel-b">' +
+      (sorting ? '<p class="note" style="margin:0 0 8px">◀ ▶ で前後に動かせます。よく使うものを前にしてください。 <button class="btn sm" data-wact="tip-auto">自動の並び（公務→クラス→授業→部活動）に戻す</button></p>' : (used.length ? '<div class="wleg">' + used.map(t => '<span class="wtag t-' + t[0] + '">' + t[1] + "</span>").join("") + "</div>" : "")) +
+      body + "</div></section>";
   }
   const panel = (cls, title, count, body) => '<section class="panel ' + cls + '"><header class="panel-h"><h2>' + title + "</h2>" + (count ? '<span class="panel-n">' + count + "</span>" : "") + '</header><div class="panel-b">' + body + "</div></section>";
 
@@ -181,7 +189,7 @@
     const m = ORDER[Math.max(0, Math.min(11, cur))], nx = cur < 11 ? ORDER[cur + 1] : null;
     let h = "";
     if (W.conflict) h += '<div class="banner err"><div>別の端末で先に更新されています。</div><div class="btns"><button class="btn" data-wact="reload">最新を読み込み直す</button></div></div>';
-    if (due.length) h += panel("p-work", "期限が近い仕事", due.length + "件", due.map(x => item(x.t, x.m, dueTag(x))).join(""));
+    if (due.length) h += panel("p-work", "期限が近い校務", due.length + "件", due.map(x => item(x.t, x.m, dueTag(x))).join(""));
     h += tipsH();
     h += panel("p-rem", s.y + "年度のようす", "", '<div class="note">' + esc(s.g === "J" ? "中学" : "高" + s.g) + "担当 ・ " + esc(W.st) + '</div><div class="bar"><i style="width:' + (all.length ? dn / all.length * 100 : 0) + '%"></i></div><div class="note">年間の進み: ' + dn + " / " + all.length + "</div>");
     if (late) h += panel("p-late", "⚠ 繰越・期限切れ", "", late);
@@ -227,7 +235,7 @@
     return h + '<p class="note">リンク一覧の作成日：' + esc((W.links && W.links.built) || "—") + "（" + esc((W.links && W.links.year) || "") + "年度のシートから）。パスワード・IDはここには入れません。</p>";
   }
   function viewDocs() {
-    return '<p class="note">タスクの「手順」として紐づけられる共通メモです。1か所直せば全部に反映されます。</p>' + W.S.docs.map((d, i) => '<div class="wcard"><input type="text" value="' + esc(d.t) + '" data-wf="doc-t" data-i="' + i + '"><label class="wck"><input type="checkbox" ' + (d.tip ? "checked" : "") + ' data-wchg="doc-tip" data-i="' + i + '"> ホームの「重要Tips」に表示</label><label class="wck">タグ（ボタンの色）： <select data-wchg="doc-tag" data-i="' + i + '" style="width:auto"><option value="">なし</option>' + TAGS.map(t => '<option value="' + t[0] + '"' + (d.tag === t[0] ? " selected" : "") + ">" + t[1] + "</option>").join("") + '</select></label><input type="text" placeholder="資料URL(任意)" value="' + esc(d.u || "") + '" data-wf="doc-u" data-i="' + i + '"><textarea style="min-height:110px" data-wf="doc-b" data-i="' + i + '">' + esc(d.b) + "</textarea>" + imgs(d) + '<button class="btn" data-wact="doc-del" data-i="' + i + '">削除</button></div>').join("") + '<button class="btn on" data-wact="doc-add">＋ 追加</button>';
+    return '<p class="note">タスクの「手順」として紐づけられる共通メモです。1か所直せば全部に反映されます。</p>' + W.S.docs.map((d, i) => '<div class="wcard"><input type="text" value="' + esc(d.t) + '" data-wf="doc-t" data-i="' + i + '"><button class="wstar" data-wact="doc-star" data-i="' + i + '" aria-pressed="' + !!d.tip + '" title="★を付けると、ホームの重要Tipsに出ます">' + (d.tip ? "★" : "☆") + '</button><label class="wck">タグ（ボタンの色）： <select data-wchg="doc-tag" data-i="' + i + '" style="width:auto"><option value="">なし</option>' + TAGS.map(t => '<option value="' + t[0] + '"' + (d.tag === t[0] ? " selected" : "") + ">" + t[1] + "</option>").join("") + '</select></label><input type="text" placeholder="資料URL(任意)" value="' + esc(d.u || "") + '" data-wf="doc-u" data-i="' + i + '"><textarea style="min-height:110px" data-wf="doc-b" data-i="' + i + '">' + esc(d.b) + "</textarea>" + imgs(d) + '<button class="btn" data-wact="doc-del" data-i="' + i + '">削除</button></div>').join("") + '<button class="btn on" data-wact="doc-add">＋ 追加</button>';
   }
   function icsText(o) {
     const yr = calYear, e = s => String(s).replace(/\\/g, "\\\\").replace(/[,;]/g, "\\$&").replace(/\n/g, "\\n"), s = W.S, ev = []; let n = 0;
@@ -250,9 +258,9 @@
   }
   function viewSet() {
     const s = W.S;
-    return '<div class="wcard"><b>担当</b><br>' + [["J", "中学"], ["1", "高1"], ["2", "高2"], ["3", "高3"]].map(([v, l]) => '<label class="wck" style="display:inline-block;margin-right:12px"><input type="radio" name="wg" ' + (s.g === v ? "checked" : "") + ' data-wchg="grade" data-v="' + v + '"> ' + l + "</label>").join("") + "<br><b>表示する仕事</b><br>" +
+    return '<div class="wcard"><b>担当</b><br>' + [["J", "中学"], ["1", "高1"], ["2", "高2"], ["3", "高3"]].map(([v, l]) => '<label class="wck" style="display:inline-block;margin-right:12px"><input type="radio" name="wg" ' + (s.g === v ? "checked" : "") + ' data-wchg="grade" data-v="' + v + '"> ' + l + "</label>").join("") + "<br><b>表示する校務</b><br>" +
       Object.entries(RL).map(([v, l]) => '<label class="wck" style="display:inline-block;margin-right:12px"><input type="checkbox" ' + (s.roles.includes(v) ? "checked" : "") + ' data-wchg="role" data-v="' + v + '"> ' + l + "</label>").join("") + "</div>" +
-      '<div class="wcard"><b>保存</b><p class="note">' + esc(W.st) + '</p><p class="note">GitHubの接続は、画面右上の「設定」で授業の記録と共通です（トークンは1つで足ります）。仕事のデータは <code>data/work.json</code> に保存されます。</p></div>' +
+      '<div class="wcard"><b>保存</b><p class="note">' + esc(W.st) + '</p><p class="note">GitHubの接続は、画面右上の「設定」で授業の記録と共通です（トークンは1つで足ります）。校務のデータは <code>data/work.json</code> に保存されます。</p></div>' +
       '<div class="wcard"><b>バックアップ</b><p class="note">いままでの「1年間の仕事」アプリで書き出した .json は、そのまま読み込めます（完了チェックも引き継がれます）。</p><button class="btn" data-wact="bk-out">ファイルに書き出す</button> <label class="btn" for="wbk" style="margin:0">ファイルから読み込む</label><input type="file" id="wbk" accept="application/json,.json" hidden></div>' +
       '<div class="wcard"><b>年度</b><p class="note">いまは ' + s.y + "年度です。4月になると自動で新しい年度になり、完了チェックは未完了に戻ります（タスクの内容と「来年へのメモ」はそのまま残ります）。</p></div>";
   }
@@ -260,23 +268,23 @@
     if (!W.ready) return '<p class="note">読み込んでいます…</p>';
     return { home: viewHome, year: viewYear, links: viewLinks, docs: viewDocs, cal: viewCal, set: viewSet }[ui.tab]();
   };
-  A.work.sub = () => W.ready ? "仕事 ・ " + W.S.y + "年度" : "仕事";
+  A.work.sub = () => W.ready ? "校務 ・ " + W.S.y + "年度" : "校務";
   A.work.statusText = () => W.st;
   A.work.dueCount = () => dueList().length;
 
-  /* 授業の「今日」タブの下に出す「今日の仕事」 */
+  /* 授業の「今日」タブの下に出す「今日の校務」 */
   A.work.todayPanel = function () {
     if (!W.ready) return "";
     const due = dueList(), mc = monthCounts();
     if (!due.length && !mc.cur && !mc.carry) return "";
-    let b = due.length ? due.map(x => item(x.t, x.m, dueTag(x))).join("") : '<p class="note" style="margin:0 0 6px">今日が期限の仕事はありません。</p>';
-    if (mc.cur || mc.carry) b += '<p class="note" style="margin:8px 0 0">' + (mc.cur ? mc.m0 + "月の仕事（日付なし）：未完了 " + mc.cur + "件" : "") + (mc.cur && mc.carry ? " ／ " : "") + (mc.carry ? "繰越 " + mc.carry + "件" : "") + ' <button class="btn sm wbtn" data-wact="go-home">仕事タブを開く</button></p>';
-    return panel("p-work", "今日の仕事", due.length ? due.length + "件" : "", b);
+    let b = due.length ? due.map(x => item(x.t, x.m, dueTag(x))).join("") : '<p class="note" style="margin:0 0 6px">今日が期限の校務はありません。</p>';
+    if (mc.cur || mc.carry) b += '<p class="note" style="margin:8px 0 0">' + (mc.cur ? mc.m0 + "月の校務（日付なし）：未完了 " + mc.cur + "件" : "") + (mc.cur && mc.carry ? " ／ " : "") + (mc.carry ? "繰越 " + mc.carry + "件" : "") + ' <button class="btn sm wbtn" data-wact="go-home">校務タブを開く</button></p>';
+    return panel("p-work", "今日の校務", due.length ? due.length + "件" : "", b);
   };
-  /* 「記録待ち」と同じお知らせ画面に出す、期限が近い仕事 */
+  /* 「記録待ち」と同じお知らせ画面に出す、期限が近い校務 */
   A.work.remHtml = function () {
     const due = dueList(); if (!due.length) return "";
-    return '<h2 class="wrem-h">期限が近い仕事があります</h2><div class="remlist">' + due.map(x => '<div class="wit"><div class="wbody"><b>' + esc(x.t.t) + "</b> " + dueTag(x) + (x.t.n ? '<div class="ww">⚠ ' + esc(x.t.n.split("\n")[0]) + "</div>" : "") + "</div></div>").join("") + '</div><p><button class="btn wbtn" data-wact="go-home">仕事タブで開く</button></p>';
+    return '<h2 class="wrem-h">期限が近い校務があります</h2><div class="remlist">' + due.map(x => '<div class="wit"><div class="wbody"><b>' + esc(x.t.t) + "</b> " + dueTag(x) + (x.t.n ? '<div class="ww">⚠ ' + esc(x.t.n.split("\n")[0]) + "</div>" : "") + "</div></div>").join("") + '</div><p><button class="btn wbtn" data-wact="go-home">校務タブで開く</button></p>';
   };
   A.work.dueCount = () => dueList().length;
 
@@ -335,7 +343,7 @@
     r.onload = () => {
       try {
         const o = JSON.parse(r.result); if (!o.tasks || !o.docs) throw 0;
-        if (!root.confirm("いまの仕事タブのデータを、このファイルの内容に置き換えます。よろしいですか？\n（メールアドレスや電話番号は自動で伏せ字に置き換えます。生徒の名前など個人情報が書いていないかは、念のため確認してください）")) return;
+        if (!root.confirm("いまの校務タブのデータを、このファイルの内容に置き換えます。よろしいですか？\n（メールアドレスや電話番号は自動で伏せ字に置き換えます。生徒の名前など個人情報が書いていないかは、念のため確認してください）")) return;
         o.y = o.y || FY; W.S = mig(o); save(); ui.tab = "home"; A.render(); A.toast && A.toast("読み込みました");
       } catch (e) { root.alert("読み込めませんでした。「1年間の仕事」アプリで書き出したバックアップ(.json)を選んでください。"); }
     };
@@ -370,6 +378,14 @@
       case "doc-add": W.S.docs.push({ id: "d" + Date.now(), t: "新しいメモ", b: "", img: [], u: "" }); save(); A.render(); break;
       case "doc-del": if (root.confirm("削除しますか？")) { W.S.docs.splice(i, 1); save(); A.render(); } break;
       case "fav": { const u = t.dataset.u, k = W.S.fav.indexOf(u); if (k >= 0) W.S.fav.splice(k, 1); else W.S.fav.push(u); save(); A.render(); break; }
+      case "doc-star": W.S.docs[i].tip = !W.S.docs[i].tip; save(); A.render(); break;
+      case "tip-sort": ui.tipSort = !ui.tipSort; A.render(); break;
+      case "tip-auto": W.S.tipOrder = []; save(); A.render(); break;
+      case "tip-mv": {
+        const ids = tipList().map(d => d.id), k = ids.indexOf(id), to = k + (+t.dataset.d);
+        if (k >= 0 && to >= 0 && to < ids.length) { ids.splice(to, 0, ids.splice(k, 1)[0]); W.S.tipOrder = ids; save(); A.render(); }
+        break;
+      }
       case "grp": ui.grp = t.dataset.v; A.render(); break;
       case "mine-add": {
         const n = $("wl_t").value.trim(), u = $("wl_u").value.trim();
@@ -396,7 +412,6 @@
       case "tg": toggle(id, +t.dataset.m); break;
       case "cc": { const tk = W.S.tasks.find(x => x.id === id), k = ck(tk, i); if (W.S.cd[k]) delete W.S.cd[k]; else W.S.cd[k] = true; save(); break; }
       case "mk": W.S.tasks.find(x => x.id === id).k = t.value; save(); if (A.ui.mode === "work") A.render(); break;
-      case "doc-tip": W.S.docs[i].tip = t.checked; save(); break;
       case "doc-tag": W.S.docs[i].tag = t.value; save(); break;
       case "grade": W.S.g = t.dataset.v; save(); break;
       case "role": { const v = t.dataset.v; W.S.roles = W.S.roles.includes(v) ? W.S.roles.filter(x => x !== v) : W.S.roles.concat(v); save(); break; }
