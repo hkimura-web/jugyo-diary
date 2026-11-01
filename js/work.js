@@ -15,7 +15,7 @@
   const PAT = { "懇談会(S1)": "d11", "懇談会(S3)": "d12", "夏期面談の実施": "d13", "通知表プレビュー": "d7", "指導要録ほぼ完成": "d8", "指導要録の最終確認": "d8" };
   const PV = ["備考欄の「出停」「忌引」の数字が表と一致", "成績に抜けがない", "委員・係・検定の入力", "欠課時数の合算(遅刻3回=欠課1)"];
   const W = { S: null, links: null, sha: null, dirty: false, saving: false, timer: null, token: false, conflict: false, canSave: true, st: "読み込み中…", ready: false, ed: null };
-  const ui = { tab: "home", q: "", grp: "", fav: false, tipSort: false };
+  const ui = { tab: "home", q: "", grp: "", fav: false, tipSort: false, dq: "", docOpen: {} };
   A.work = {}; A.ui.work = ui;
   const nl = s => esc(s).replace(/\n/g, "<br>");
   const nfkc = s => String(s == null ? "" : s).normalize("NFKC").toLowerCase();
@@ -234,8 +234,19 @@
     h += '<details class="wdet"><summary><b>＋ リンクを追加する</b></summary><div style="padding:6px 0"><label>名前</label><input type="text" id="wl_t" placeholder="例：新しい手順書"><label>URL</label><input type="text" id="wl_u" placeholder="https://…"><label>分類</label><select id="wl_s"><option value="">自分で追加（分類なし）</option>' + secs.map(s => "<option>" + esc(s) + "</option>").join("") + '</select><button class="btn on" data-wact="mine-add">追加</button></div></details>';
     return h + '<p class="note">リンク一覧の作成日：' + esc((W.links && W.links.built) || "—") + "（" + esc((W.links && W.links.year) || "") + "年度のシートから）。パスワード・IDはここには入れません。</p>";
   }
+  /* 手順・メモ: 上に「＋ 新しいメモ」と検索。メモは見出しだけに畳んであり、押すと開く */
+  function docCard(d, i) {
+    const open = ui.docOpen[d.id] ? " open" : "";
+    return '<details class="wdet wdoc" data-id="' + d.id + '"' + open + '><summary><span class="wtag t-' + esc(d.tag || "none") + '">' + esc(tagName(d.tag) || "タグなし") + '</span> <b class="wdt">' + esc(d.t || "（無題）") + "</b>" + (d.tip ? ' <span class="wst">★</span>' : "") + "</summary>" +
+      '<div class="wcard" style="border:0;padding:4px 0 8px"><input type="text" value="' + esc(d.t) + '" data-wf="doc-t" data-i="' + i + '" aria-label="見出し"><button class="wstar" data-wact="doc-star" data-i="' + i + '" aria-pressed="' + !!d.tip + '" title="★を付けると、ホームの重要Tipsに出ます">' + (d.tip ? "★" : "☆") + '</button><label class="wck">タグ（ボタンの色）： <select data-wchg="doc-tag" data-i="' + i + '" style="width:auto"><option value="">なし</option>' + TAGS.map(t => '<option value="' + t[0] + '"' + (d.tag === t[0] ? " selected" : "") + ">" + t[1] + "</option>").join("") + '</select></label><input type="text" placeholder="資料URL(任意)" value="' + esc(d.u || "") + '" data-wf="doc-u" data-i="' + i + '"><textarea style="min-height:110px" data-wf="doc-b" data-i="' + i + '">' + esc(d.b) + "</textarea>" + imgs(d) + '<button class="btn" data-wact="doc-del" data-i="' + i + '">削除</button></div></details>';
+  }
+  function docList() {
+    const q = nfkc(ui.dq).split(/\s+/).filter(Boolean);
+    return W.S.docs.map((d, i) => [d, i]).filter(x => q.every(t => nfkc(x[0].t + " " + x[0].b).indexOf(t) >= 0)).map(x => docCard(x[0], x[1])).join("") || '<p class="note">見つかりません。</p>';
+  }
   function viewDocs() {
-    return '<p class="note">タスクの「手順」として紐づけられる共通メモです。1か所直せば全部に反映されます。</p>' + W.S.docs.map((d, i) => '<div class="wcard"><input type="text" value="' + esc(d.t) + '" data-wf="doc-t" data-i="' + i + '"><button class="wstar" data-wact="doc-star" data-i="' + i + '" aria-pressed="' + !!d.tip + '" title="★を付けると、ホームの重要Tipsに出ます">' + (d.tip ? "★" : "☆") + '</button><label class="wck">タグ（ボタンの色）： <select data-wchg="doc-tag" data-i="' + i + '" style="width:auto"><option value="">なし</option>' + TAGS.map(t => '<option value="' + t[0] + '"' + (d.tag === t[0] ? " selected" : "") + ">" + t[1] + "</option>").join("") + '</select></label><input type="text" placeholder="資料URL(任意)" value="' + esc(d.u || "") + '" data-wf="doc-u" data-i="' + i + '"><textarea style="min-height:110px" data-wf="doc-b" data-i="' + i + '">' + esc(d.b) + "</textarea>" + imgs(d) + '<button class="btn" data-wact="doc-del" data-i="' + i + '">削除</button></div>').join("") + '<button class="btn on" data-wact="doc-add">＋ 追加</button>';
+    return '<div class="wdocbar"><input type="search" id="wdq" data-wf="dq" placeholder="メモをさがす" value="' + esc(ui.dq) + '" autocomplete="off"><button class="btn on" data-wact="doc-add">＋ 新しいメモ</button></div>' +
+      '<p class="note">タスクの「手順」として紐づけられる共通メモです。1か所直せば全部に反映されます。</p><div id="wdocs">' + docList() + '</div><button class="wfab" data-wact="doc-add" aria-label="新しいメモを足す" title="新しいメモを足す">＋</button>';
   }
   function icsText(o) {
     const yr = calYear, e = s => String(s).replace(/\\/g, "\\\\").replace(/[,;]/g, "\\$&").replace(/\n/g, "\\n"), s = W.S, ev = []; let n = 0;
@@ -375,7 +386,12 @@
       case "lk-del": readEd(); W.ed.lk.splice(i, 1); renderEdit(); break;
       case "tip": { const d = W.S.docs.find(x => x.id === id); modal('<h2 style="margin:0">' + esc(d.t) + '</h2><div style="margin-top:8px">' + nl(d.b) + "</div>" + (d.u ? '<p><a href="' + esc(d.u) + '" target="_blank" rel="noopener">資料を開く ↗</a></p>' : "") + imgs(d) + '<div class="dlg-btns"><button class="btn" data-wact="cl">閉じる</button></div>'); break; }
       case "tip-add": W.S.docs.push({ id: "d" + Date.now(), t: "新しいTips", b: "", tip: true, img: [], u: "", tag: "" }); save(); ui.tab = "docs"; A.render(); root.scrollTo(0, document.body.scrollHeight); break;
-      case "doc-add": W.S.docs.push({ id: "d" + Date.now(), t: "新しいメモ", b: "", img: [], u: "" }); save(); A.render(); break;
+      case "doc-add": {
+        const d = { id: "d" + Date.now(), t: "", b: "", img: [], u: "", tag: "" };
+        W.S.docs.unshift(d); ui.docOpen[d.id] = true; ui.dq = ""; ui.tab = "docs"; save(); A.render(); root.scrollTo(0, 0);
+        const el = document.querySelector('.wdoc[data-id="' + d.id + '"] [data-wf="doc-t"]'); if (el) el.focus();
+        break;
+      }
       case "doc-del": if (root.confirm("削除しますか？")) { W.S.docs.splice(i, 1); save(); A.render(); } break;
       case "fav": { const u = t.dataset.u, k = W.S.fav.indexOf(u); if (k >= 0) W.S.fav.splice(k, 1); else W.S.fav.push(u); save(); A.render(); break; }
       case "doc-star": W.S.docs[i].tip = !W.S.docs[i].tip; save(); A.render(); break;
@@ -421,11 +437,13 @@
   document.addEventListener("input", e => {
     const t = e.target, f = t.dataset && t.dataset.wf; if (!f) return;
     const i = +t.dataset.i;
+    if (f === "dq") { ui.dq = t.value; const r = $("wdocs"); if (r) r.innerHTML = docList(); return; }
     if (f === "lq") { ui.q = t.value; const r = $("wres"); if (r) r.innerHTML = linkResults(); return; }
-    if (f === "doc-t") W.S.docs[i].t = t.value; else if (f === "doc-b") W.S.docs[i].b = t.value; else if (f === "doc-u") W.S.docs[i].u = t.value;
+    if (f === "doc-t") { W.S.docs[i].t = t.value; const sm = t.closest(".wdoc"); if (sm) sm.querySelector(".wdt").textContent = t.value || "（無題）"; } else if (f === "doc-b") W.S.docs[i].b = t.value; else if (f === "doc-u") W.S.docs[i].u = t.value;
     save();
   });
 
+  document.addEventListener("toggle", e => { const d = e.target; if (d && d.classList && d.classList.contains("wdoc")) { if (d.open) ui.docOpen[d.dataset.id] = true; else delete ui.docOpen[d.dataset.id]; } }, true);
   A.work.load = load;
   load();
 })(window);
