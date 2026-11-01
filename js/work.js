@@ -162,8 +162,8 @@
     return '<div class="wit' + (dn ? " dn" : "") + '"><input type="checkbox" aria-label="完了" ' + (dn ? "checked" : "") + ' data-wchg="tg" data-id="' + t.id + '" data-m="' + m + '"><div class="wbody" data-wact="op" data-id="' + t.id + '" data-m="' + m + '"><b>' + esc(t.t) + '</b> <span class="wc">' + RL[t.r] + (t.tg ? " " + tgl(t.tg) : "") + (t.dd && !t.rep ? " " + m + "/" + t.dd : "") + "</span>" + (tag || "") +
       (t.n ? '<div class="ww">⚠ ' + esc(t.n.split("\n")[0]) + "</div>" : "") + (t.k ? '<div class="wk">📝 ' + esc(t.k.split("\n")[0]) + "</div>" : "") + "</div></div>";
   }
-  const TAGS = [["komu", "公務全般"], ["class", "クラス"], ["jugyo", "授業"], ["bukatsu", "部活動"]]; /* この順番で、重要Tipsも並ぶ */
-  const TAGDEF = { d1: "jugyo", d17: "jugyo", d2: "class", d3: "class", d4: "class", d5: "class", d6: "class", d7: "class", d8: "class", d9: "class", d10: "class", d11: "class", d12: "class", d13: "class", d14: "class", d15: "class", d16: "class" };
+  const TAGS = [["komu", "公務全般"], ["class", "クラス"], ["jugyo", "授業"], ["seiseki", "テスト成績"], ["bukatsu", "部活動"]]; /* この順番で、重要Tipsも並ぶ */
+  const TAGDEF = { d1: "seiseki", d17: "seiseki", d2: "class", d3: "class", d4: "class", d5: "class", d6: "class", d7: "class", d8: "class", d9: "class", d10: "class", d11: "class", d12: "class", d13: "class", d14: "class", d15: "class", d16: "class" };
   const tagName = k => (TAGS.find(x => x[0] === k) || ["", ""])[1];
   const TO = ["d5", "d3", "d15", "d4", "d16", "d17"];
   /* 重要Tipsの並び: はじめは「公務全般→クラス→授業→部活動」の順。手で動かしたら、その順番を覚える */
