@@ -161,12 +161,12 @@
     return '<div class="wit' + (dn ? " dn" : "") + '"><input type="checkbox" aria-label="完了" ' + (dn ? "checked" : "") + ' data-wchg="tg" data-id="' + t.id + '" data-m="' + m + '"><div class="wbody" data-wact="op" data-id="' + t.id + '" data-m="' + m + '"><b>' + esc(t.t) + '</b> <span class="wc">' + RL[t.r] + (t.tg ? " " + tgl(t.tg) : "") + (t.dd && !t.rep ? " " + m + "/" + t.dd : "") + "</span>" + (tag || "") +
       (t.n ? '<div class="ww">⚠ ' + esc(t.n.split("\n")[0]) + "</div>" : "") + (t.k ? '<div class="wk">📝 ' + esc(t.k.split("\n")[0]) + "</div>" : "") + "</div></div>";
   }
-  const TAGS = [["jugyo", "授業"], ["class", "クラス"], ["bukatsu", "部活動"], ["komu", "公務全般"]];
+  const TAGS = [["komu", "公務全般"], ["class", "クラス"], ["jugyo", "授業"], ["bukatsu", "部活動"]]; /* この順番で、重要Tipsも並ぶ */
   const TAGDEF = { d1: "jugyo", d17: "jugyo", d2: "class", d3: "class", d4: "class", d5: "class", d6: "class", d7: "class", d8: "class", d9: "class", d10: "class", d11: "class", d12: "class", d13: "class", d14: "class", d15: "class", d16: "class" };
   const tagName = k => (TAGS.find(x => x[0] === k) || ["", ""])[1];
   const TO = ["d5", "d3", "d15", "d4", "d16", "d17"];
   function tipsH() {
-    const f = x => { const i = TO.indexOf(x.id); return i < 0 ? 99 : i; }, l = W.S.docs.filter(d => d.tip).sort((a, b) => f(a) - f(b));
+    const tr = x => { const k = TAGS.findIndex(t => t[0] === x.tag); return k < 0 ? TAGS.length : k; }, f = x => { const i = TO.indexOf(x.id); return tr(x) * 100 + (i < 0 ? 99 : i); }, l = W.S.docs.filter(d => d.tip).sort((a, b) => f(a) - f(b));
     const used = TAGS.filter(t => l.some(d => d.tag === t[0]));
     return '<section class="panel p-work"><header class="panel-h"><h2>重要Tips</h2><span class="panel-n">押すとすぐ説明が開きます</span></header><div class="panel-b">' +
       (used.length ? '<div class="wleg">' + used.map(t => '<span class="wtag t-' + t[0] + '">' + t[1] + "</span>").join("") + "</div>" : "") +
