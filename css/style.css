@@ -685,3 +685,16 @@ body.workmode .p-now{border-top-color:var(--wk)}
 
 a.wtp{display:inline-block;text-decoration:none}
 .wgo{font-size:.85em;opacity:.7}
+
+/* 左カラム: 濃い紺（THE WORKBASE） */
+:root,:root[data-theme="dark"],:root:not([data-theme="light"]){--sb-bg:#101d32;--sb-line:#1b2b45;--sb-ink:#c3cee0;--sb-mute:#7f8fa8;--sb-on-bg:#295788;--sb-on-ink:#ffffff;--sb-badge:rgba(255,255,255,.14);--sb-badge-ink:#ffffff}
+@media (min-width:900px){
+  .si:hover{background:rgba(255,255,255,.07)}
+  .si .ic{opacity:.8}
+  .si.on{box-shadow:none;color:#fff}
+  .si.on .ic{color:#fff;opacity:1}
+  .si.on::before{background:#7da2ff}
+  .si.work.on{color:#fff}.si.work.on .ic{color:#fff}.si.work.on::before{background:#3fd0c6}
+  .topbar{background:linear-gradient(100deg,#101d32 0%,#1b3258 50%,#2f5a96 100%)}
+  h1,.hero h1{letter-spacing:.14em;font-size:19px}
+}

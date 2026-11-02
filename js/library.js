@@ -1,4 +1,4 @@
-/* myClassBlueprint.log: 資料タブ（資料集の検索・教材カード・お気に入り・準備チェックリスト）と、
+/* THE WORKBASE: 資料タブ（資料集の検索・教材カード・お気に入り・準備チェックリスト）と、
  * 単元の教材に資料を取り込む操作。
  *  - 資料のリンク一覧: library/links.json（tools/xlsx_to_library.py でスプレッドシートから作る。アプリでは読むだけ）
  *  - お気に入り・チェックリスト: data/portal.json（アプリで編集。トークンがあれば GitHub に自動保存） */

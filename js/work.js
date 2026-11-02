@@ -1,4 +1,4 @@
-/* myClassBlueprint.log: 「校務」モード（1年間の仕事・リンク集・手順メモ・カレンダー）
+/* THE WORKBASE: 「校務」モード（1年間の仕事・リンク集・手順メモ・カレンダー）
  *  - 校務のデータ: data/work.json（トークンがあれば GitHub に自動保存。なければこの端末の下書き）
  *  - リンク集の元データ: work/links.json（tools/xlsx_to_work.py でスプレッドシートから作る。アプリでは読むだけ）
  *  - 自分で足したリンク・★は work.json に入る */
