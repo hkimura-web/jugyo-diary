@@ -595,7 +595,7 @@ a.wml:hover{text-decoration:underline}
 /* =====================================================================
  * 新しい配置（案X）：上にバナー、左にメニュー（パソコン）／スマホは下にタブ
  * ===================================================================== */
-:root{--sb-bg:#eef1f8;--sb-line:#dde3ef;--sb-ink:#46567a;--sb-mute:#8c98b3;--sb-on-bg:#ffffff;--sb-on-ink:#27407f;--sb-badge:#dfe6f6;--sb-badge-ink:#3a5aae}
+:root{--sb-bg:#e7e9ee;--sb-line:#d6d9e0;--sb-ink:#394150;--sb-mute:#6b7384;--sb-on-bg:#ffffff;--sb-on-ink:#27407f;--sb-badge:rgba(255,255,255,.6);--sb-badge-ink:#394150}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--sb-bg:#151d2b;--sb-line:#26313f;--sb-ink:#aab6cc;--sb-mute:#6f7d93;--sb-on-bg:#232f44;--sb-on-ink:#dbe5ff;--sb-badge:#26334d;--sb-badge-ink:#a9bdf2}}
 :root[data-theme="dark"]{--sb-bg:#151d2b;--sb-line:#26313f;--sb-ink:#aab6cc;--sb-mute:#6f7d93;--sb-on-bg:#232f44;--sb-on-ink:#dbe5ff;--sb-badge:#26334d;--sb-badge-ink:#a9bdf2}
 
@@ -667,8 +667,8 @@ body.workmode .p-now{border-top-color:var(--wk)}
   .sg:first-child{padding-top:8px}
   .si{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:9px;background:none;color:var(--sb-ink);font-size:13.5px;cursor:pointer;position:relative}
   .si .ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;opacity:.75}
-  .si:hover{background:rgba(58,90,174,.08)}
-  .si.on{background:var(--sb-on-bg);color:var(--sb-on-ink);font-weight:700;box-shadow:0 1px 3px rgba(40,60,110,.14),0 0 0 1px var(--sb-line)}
+  .si:hover{background:rgba(40,50,70,.07)}
+  .si.on{background:var(--sb-on-bg);color:var(--sb-on-ink);font-weight:700;box-shadow:0 1px 4px rgba(30,40,60,.2),0 0 0 1px var(--sb-line)}
   .si.on .ic{opacity:1;color:#3b5bb5}
   .si.on::before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:4px;border-radius:0 3px 3px 0;background:#3b5bb5}
   .si.work.on .ic{color:var(--wk)}.si.work.on::before{background:var(--wk)}.si.work.on{color:var(--wk-ink)}
