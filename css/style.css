@@ -595,7 +595,7 @@ a.wml:hover{text-decoration:underline}
 /* =====================================================================
  * 新しい配置（案X）：上にバナー、左にメニュー（パソコン）／スマホは下にタブ
  * ===================================================================== */
-:root{--sb-bg:#e7e9ee;--sb-line:#d6d9e0;--sb-ink:#394150;--sb-mute:#6b7384;--sb-on-bg:#ffffff;--sb-on-ink:#27407f;--sb-badge:rgba(255,255,255,.6);--sb-badge-ink:#394150}
+:root{--sb-bg:#cbcfd8;--sb-line:#b4b9c4;--sb-ink:#2d3544;--sb-mute:#555d70;--sb-on-bg:#ffffff;--sb-on-ink:#27407f;--sb-badge:rgba(255,255,255,.6);--sb-badge-ink:#2d3544}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--sb-bg:#151d2b;--sb-line:#26313f;--sb-ink:#aab6cc;--sb-mute:#6f7d93;--sb-on-bg:#232f44;--sb-on-ink:#dbe5ff;--sb-badge:#26334d;--sb-badge-ink:#a9bdf2}}
 :root[data-theme="dark"]{--sb-bg:#151d2b;--sb-line:#26313f;--sb-ink:#aab6cc;--sb-mute:#6f7d93;--sb-on-bg:#232f44;--sb-on-ink:#dbe5ff;--sb-badge:#26334d;--sb-badge-ink:#a9bdf2}
 
