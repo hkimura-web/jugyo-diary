@@ -134,6 +134,41 @@
     if (html == null) { if ($("celldlg").open) $("celldlg").close(); return; }
     $("cellbody").innerHTML = html;
   }
+  /* ---------- 左のメニュー（パソコンの画面だけに出る） ---------- */
+  const IC = {
+    today: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none"/>',
+    plan: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/>',
+    grid: '<rect x="3.5" y="5.5" width="17" height="13" rx="1.5"/><path d="M3.5 10h17M9.2 5.5v13M14.8 5.5v13"/>',
+    unit: '<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
+    sum: '<path d="M5 20V11M12 20V4M19 20v-6"/>',
+    lib: '<path d="M5 4.5h10.5a2.5 2.5 0 0 1 2.5 2.5v13H7.5A2.5 2.5 0 0 1 5 17.5z"/><path d="M5 17.5A2.5 2.5 0 0 1 7.5 15H18M9 8.5h5"/>',
+    home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-6h4v6"/>',
+    year: '<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9h17M8 4.5v-2M16 4.5v-2"/><path d="M7.5 13h3M13.5 13h3M7.5 16.5h3"/>',
+    links: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    docs: '<path d="M6 3.5h9l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14.5 3.5V8H19M8.5 12h7M8.5 15.5h7"/>',
+    cal: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/>',
+    set: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/>'
+  };
+  const SIDE = [
+    ["授業", "class", [["today", "今日"], ["plan", "計画表"], ["grid", "一覧"], ["unit", "単元別"], ["sum", "サマリー"], ["lib", "資料"]]],
+    ["校務", "work", [["home", "ホーム"], ["year", "年間"], ["links", "リンク集"], ["docs", "手順・メモ"], ["cal", "カレンダー"], ["set", "校務の設定"]]]
+  ];
+  function renderSide() {
+    const wm = A.ui.mode === "work", cur = wm ? A.ui.work.tab : A.ui.tab;
+    const svg = k => '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + IC[k] + "</svg>";
+    let h = "";
+    SIDE.forEach(([gn, m, items]) => {
+      h += '<div class="sg">' + gn + "</div>";
+      items.forEach(([k, n]) => {
+        const on = (m === "work") === wm && cur === k;
+        const bd = m === "work" && k === "home" && A.work && A.work.dueCount() ? '<span class="sbd">' + A.work.dueCount() + "</span>" : "";
+        h += '<button class="si ' + m + (on ? " on" : "") + '" data-side="' + m + ":" + k + '"' + (on ? ' aria-current="page"' : "") + ">" + svg(k) + "<span>" + n + "</span>" + bd + "</button>";
+      });
+    });
+    h += '<div class="sgap"></div><button class="si" data-act="settings">' + svg("gear") + "<span>設定・保存</span></button>";
+    $("sidenav").innerHTML = h;
+  }
   function render() {
     if (!A.st) return;
     const wm = A.ui.mode === "work";
@@ -145,7 +180,7 @@
       document.querySelectorAll("[data-wtab]").forEach(b => b.setAttribute("aria-selected", b.dataset.wtab === A.ui.work.tab));
       document.querySelector(".wrap").classList.remove("wide");
       $("app").innerHTML = A.work.view();
-      renderStatus(); renderBanner();
+      renderStatus(); renderBanner(); renderSide();
       return;
     }
     $("sub").textContent = A.st.term.name + "（" + J.md(A.st.term.start) + "〜" + J.md(A.st.term.end) + "）";
@@ -160,7 +195,7 @@
     A.ui.gridReset = false;
     if (A.ui.cell && A.ui.cellRefresh) fillCell();
     A.ui.cellRefresh = false;
-    renderStatus(); renderBanner();
+    renderStatus(); renderBanner(); renderSide();
   }
   function fatal(msg) {
     $("sub").textContent = "データを読み込めません";
@@ -354,6 +389,13 @@
   document.addEventListener("click", e => {
     if (e.target.closest("a[target=_blank]")) return;
     if (e.target.closest(".hero") && !e.target.closest(".tools")) { goHome(); return; }
+    const sd = e.target.closest("[data-side]");
+    if (sd) {
+      const [m, k] = sd.dataset.side.split(":");
+      A.ui.mode = m; LS.set("jd.mode", m);
+      if (m === "work") A.ui.work.tab = k; else A.ui.tab = k;
+      A.ui.open = null; render(); window.scrollTo(0, 0); return;
+    }
     const t = e.target.closest("[data-tab],[data-act]"); if (!t) return;
     if (t.dataset.tab) { A.ui.tab = t.dataset.tab; A.ui.open = null; render(); return; }
     const a = t.dataset.act, k = t.dataset.key, id = t.dataset.id;
@@ -536,6 +578,23 @@
   document.addEventListener("keydown", e => {
     if (e.key === "Enter" && e.target.matches && e.target.matches('td[data-act="cell"]')) e.target.click();
     if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".brand")) { e.preventDefault(); goHome(); }
+  });
+  /* ポップアップの外（暗い所）を押したら閉じる。入力は押した時点で保存されるので消えません */
+  /* 「保存」を押して反映する形のポップアップは、何か入力したあとに外を押しても閉じません（入力が消えるのを防ぐため） */
+  const FORMS = ["wdlg", "dlg", "carrydlg", "flowdlg"], touched = new Set();
+  FORMS.forEach(id => {
+    const d = $(id);
+    ["input", "change"].forEach(ev => d.addEventListener(ev, () => touched.add(id)));
+    d.addEventListener("close", () => touched.delete(id));
+  });
+  let downOn = null;
+  document.addEventListener("pointerdown", e => { downOn = e.target; }, true);
+  document.addEventListener("click", e => {
+    const d = e.target;
+    if (!(d instanceof HTMLDialogElement) || !d.open || downOn !== d || touched.has(d.id)) return;
+    const r = d.getBoundingClientRect();
+    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+    d.close();
   });
   $("celldlg").addEventListener("close", () => { A.ui.cell = null; render(); });
   window.addEventListener("beforeunload", e => { if (dirty && mode === "github") { e.preventDefault(); e.returnValue = ""; } });

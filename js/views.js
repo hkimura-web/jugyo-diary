@@ -154,16 +154,20 @@
       tiles += '<button class="tile k-' + subj(c.name) + '" data-act="goplan" data-id="' + c.id + '"><span class="tile-h"><b>' + esc(a) + "</b><span>" + esc(b) + '</span></span><span class="big num">' + s.remain + '<small>時間</small></span>' + meter(o, false) + "<span>" + gap + "</span></button>";
     });
     tiles += "</div>";
-    let h = (A.work ? A.work.morning() : "") + panel("p-rem", "残りの授業時間", md(asof) + "から", tiles);
-
     const rows = [];
     all.forEach(({ s }) => s.pj.rows.forEach(r => rows.push(r)));
     rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : ((a.periods || [0])[0] - (b.periods || [0])[0]) || (a.key < b.key ? -1 : 1));
     const evT = st.events[asof];
     const today = rows.filter(r => r.date === asof);
-    h += panel("p-now", md(asof) + "（" + dw(asof) + "）の授業", today.length ? today.length + "コマ" : "", (evT ? '<p class="note" style="margin:0 0 8px">行事：' + esc(evT) + "</p>" : "") +
+    const isToday = asof === J.ds(new Date());
+    const WD = ["日", "月", "火", "水", "木", "金", "土"], wdn = WD[new Date(asof + "T00:00:00").getDay()];
+    let h = (A.work ? A.work.morning() : "") +
+      '<div class="pghd"><div><h2 class="pgt">Today</h2><p class="pgs">授業の予定と校務を、ここから。</p></div><div class="pgd num">' + md(asof) + " <small>" + wdn + "曜日" + (isToday ? "" : "（基準日）") + "</small></div></div>";
+    const nowP = panel("p-now", isToday ? "今日の授業" : md(asof) + "（" + dw(asof) + "）の授業", today.length ? today.length + "コマ" : "", (evT ? '<p class="note" style="margin:0 0 8px">行事：' + esc(evT) + "</p>" : "") +
       (today.length ? '<div class="list">' + today.map(r => slotCard(r, true)).join("") + "</div>" : '<p class="note" style="margin:0">この日に担当授業はありません。</p>'));
-    if (A.work) h += A.work.todayPanel();
+    const wkP = A.work ? A.work.todayPanel() : "";
+    h += '<div class="tworow' + (wkP ? "" : " one") + '">' + nowP + wkP + "</div>";
+    h += panel("p-rem", "担当クラスの授業進度", "残りの授業時間（" + md(asof) + "から）", tiles);
     const lim = addDays(asof, 7);
     const soon = rows.filter(r => r.date > asof && r.date <= lim && r.kind !== "off");
     h += panel("p-soon", "これから1週間", soon.length ? soon.length + "コマ" : "", soon.length ? '<div class="list">' + soon.map(r => slotCard(r, true)).join("") + "</div>" : '<p class="note" style="margin:0">授業の予定はありません。</p>');
