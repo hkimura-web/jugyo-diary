@@ -682,3 +682,6 @@ body.workmode .p-now{border-top-color:var(--wk)}
   .wfab{right:28px}
 }
 @media (max-width:899px){.wdocbar{top:0}}
+
+a.wtp{display:inline-block;text-decoration:none}
+.wgo{font-size:.85em;opacity:.7}

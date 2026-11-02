@@ -166,7 +166,7 @@
     return '<div class="wit' + (dn ? " dn" : "") + '"><input type="checkbox" aria-label="完了" ' + (dn ? "checked" : "") + ' data-wchg="tg" data-id="' + t.id + '" data-m="' + m + '"><div class="wbody" data-wact="op" data-id="' + t.id + '" data-m="' + m + '"><b>' + esc(t.t) + '</b> <span class="wc">' + RL[t.r] + (t.tg ? " " + tgl(t.tg) : "") + (t.dd && !t.rep ? " " + m + "/" + t.dd : "") + "</span>" + (tag || "") +
       (t.n ? '<div class="ww">⚠ ' + esc(t.n.split("\n")[0]) + "</div>" : "") + (t.k ? '<div class="wk">📝 ' + esc(t.k.split("\n")[0]) + "</div>" : "") + "</div></div>";
   }
-  const TAGS = [["komu", "公務全般"], ["class", "クラス"], ["jugyo", "授業"], ["seiseki", "テスト成績"], ["bukatsu", "部活動"]]; /* この順番で、重要Tipsも並ぶ */
+  const TAGS = [["komu", "校務全般"], ["class", "クラス"], ["jugyo", "授業"], ["seiseki", "テスト成績"], ["bukatsu", "部活動"]]; /* この順番で、重要Tipsも並ぶ */
   const TAGDEF = { d1: "seiseki", d17: "seiseki", d2: "class", d3: "class", d4: "class", d5: "class", d6: "class", d7: "class", d8: "class", d9: "class", d10: "class", d11: "class", d12: "class", d13: "class", d14: "class", d15: "class", d16: "class" };
   const tagName = k => (TAGS.find(x => x[0] === k) || ["", ""])[1];
   const TO = ["d5", "d3", "d15", "d4", "d16", "d17"];
@@ -178,7 +178,7 @@
   }
   function tipsH() {
     const l = tipList(), used = TAGS.filter(t => l.some(d => d.tag === t[0])), sorting = ui.tipSort;
-    const btn = d => '<button class="wtp t-' + esc(d.tag || "none") + '" data-wact="tip" data-id="' + d.id + '">' + esc(d.t) + "</button>";
+    const btn = d => (d.go === "link" && d.u && !sorting) ? '<a class="wtp t-' + esc(d.tag || "none") + '" href="' + esc(d.u) + '" target="_blank" rel="noopener noreferrer" title="押すと資料がすぐ開きます">' + esc(d.t) + ' <span class="wgo">↗</span></a>' : '<button class="wtp t-' + esc(d.tag || "none") + '" data-wact="tip" data-id="' + d.id + '">' + esc(d.t) + "</button>";
     const body = l.map((d, k) => sorting ? '<span class="wtpw"><button class="wmv" data-wact="tip-mv" data-id="' + d.id + '" data-d="-1"' + (k === 0 ? " disabled" : "") + ' aria-label="前へ">◀</button>' + btn(d) + '<button class="wmv" data-wact="tip-mv" data-id="' + d.id + '" data-d="1"' + (k === l.length - 1 ? " disabled" : "") + ' aria-label="後ろへ">▶</button></span>' : btn(d)).join("");
     return '<section class="panel p-work p-tips"><header class="panel-h"><h2>重要Tips</h2><span class="panel-n"><button class="btn sm" data-wact="tip-sort">' + (sorting ? "完了" : "並べ替え") + '</button></span></header><div class="panel-b">' +
       (sorting ? '<p class="note" style="margin:0 0 8px">◀ ▶ で前後に動かせます。よく使うものを前にしてください。 <button class="btn sm" data-wact="tip-auto">自動の並び（公務→クラス→授業→部活動）に戻す</button></p>' : (used.length ? '<div class="wleg">' + used.map(t => '<span class="wtag t-' + t[0] + '">' + t[1] + "</span>").join("") + "</div>" : "")) +
@@ -242,7 +242,7 @@
   function docCard(d, i) {
     const open = ui.docOpen[d.id] ? " open" : "";
     return '<details class="wdet wdoc" data-id="' + d.id + '"' + open + '><summary><span class="wtag t-' + esc(d.tag || "none") + '">' + esc(tagName(d.tag) || "タグなし") + '</span> <b class="wdt">' + esc(d.t || "（無題）") + "</b>" + (d.tip ? ' <span class="wst">★</span>' : "") + "</summary>" +
-      '<div class="wcard" style="border:0;padding:4px 0 8px"><input type="text" value="' + esc(d.t) + '" data-wf="doc-t" data-i="' + i + '" aria-label="見出し"><button class="wstar" data-wact="doc-star" data-i="' + i + '" aria-pressed="' + !!d.tip + '" title="★を付けると、ホームの重要Tipsに出ます">' + (d.tip ? "★" : "☆") + '</button><label class="wck">タグ（ボタンの色）： <select data-wchg="doc-tag" data-i="' + i + '" style="width:auto"><option value="">なし</option>' + TAGS.map(t => '<option value="' + t[0] + '"' + (d.tag === t[0] ? " selected" : "") + ">" + t[1] + "</option>").join("") + '</select></label><input type="text" placeholder="資料URL(任意)" value="' + esc(d.u || "") + '" data-wf="doc-u" data-i="' + i + '"><textarea style="min-height:110px" data-wf="doc-b" data-i="' + i + '">' + esc(d.b) + "</textarea>" + imgs(d) + '<button class="btn" data-wact="doc-del" data-i="' + i + '">削除</button></div></details>';
+      '<div class="wcard" style="border:0;padding:4px 0 8px"><input type="text" value="' + esc(d.t) + '" data-wf="doc-t" data-i="' + i + '" aria-label="見出し"><button class="wstar" data-wact="doc-star" data-i="' + i + '" aria-pressed="' + !!d.tip + '" title="★を付けると、ホームの重要Tipsに出ます">' + (d.tip ? "★" : "☆") + '</button><label class="wck">タグ（ボタンの色）： <select data-wchg="doc-tag" data-i="' + i + '" style="width:auto"><option value="">なし</option>' + TAGS.map(t => '<option value="' + t[0] + '"' + (d.tag === t[0] ? " selected" : "") + ">" + t[1] + "</option>").join("") + '</select></label><label class="wck">重要Tipsのボタンを押したら： <select data-wchg="doc-go" data-i="' + i + '" style="width:auto"><option value="">説明を出す（資料URLがあればリンクも付く）</option><option value="link"' + (d.go === "link" ? " selected" : "") + '>資料をすぐ開く（説明は出さない）</option></select></label><input type="text" placeholder="資料URL(任意)" value="' + esc(d.u || "") + '" data-wf="doc-u" data-i="' + i + '"><textarea style="min-height:110px" data-wf="doc-b" data-i="' + i + '">' + esc(d.b) + "</textarea>" + imgs(d) + '<button class="btn" data-wact="doc-del" data-i="' + i + '">削除</button></div></details>';
   }
   function docList() {
     const q = nfkc(ui.dq).split(/\s+/).filter(Boolean);
@@ -452,6 +452,7 @@
       case "cc": { const tk = W.S.tasks.find(x => x.id === id), k = ck(tk, i); if (W.S.cd[k]) delete W.S.cd[k]; else W.S.cd[k] = true; save(); break; }
       case "mk": W.S.tasks.find(x => x.id === id).k = t.value; save(); if (A.ui.mode === "work") A.render(); break;
       case "doc-tag": W.S.docs[i].tag = t.value; save(); break;
+      case "doc-go": W.S.docs[i].go = t.value; save(); break;
       case "grade": W.S.g = t.dataset.v; save(); break;
       case "role": { const v = t.dataset.v; W.S.roles = W.S.roles.includes(v) ? W.S.roles.filter(x => x !== v) : W.S.roles.concat(v); save(); break; }
       case "m-weekend": W.S.morning.weekend = t.checked; save(); break;
